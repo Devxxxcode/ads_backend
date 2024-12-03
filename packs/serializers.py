@@ -14,6 +14,7 @@ class PackSerializer(serializers.ModelSerializer):
         read_only_fields = ["created_by", "created_at", "updated_at"]
 
     def save(self, **kwargs):
+        
         # Set created_by to the current user if provided
         user = self.context['request'].user
         kwargs['created_by'] = user
