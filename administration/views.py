@@ -10,12 +10,12 @@ from rest_framework.decorators import action
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from .models import Settings,Event
-from .serializers import SettingsSerializer,DepositSerializer,SettingsVideoSerializer,EventSerializer
+from .serializers import SettingsSerializer,DepositSerializer,SettingsVideoSerializer,EventSerializer,WithdrawalSerializer
 from shared.utils import standard_response as Response
 from shared.helpers import get_settings
 from shared.mixins import StandardResponseMixin
 from core.permissions import IsSiteAdmin,IsAdminOrReadOnly
-from finances.models import Deposit
+from finances.models import Deposit,Withdrawal
 from cloudinary.uploader import upload
 from rest_framework.exceptions import ValidationError
 from rest_framework.viewsets import ReadOnlyModelViewSet
@@ -198,6 +198,107 @@ class AdminDepositViewSet(StandardResponseMixin, ViewSet):
             data=serializer.data,
             status_code=status.HTTP_200_OK,
         )
+
+class AdminWithdrawalViewSet(StandardResponseMixin, ViewSet):
+    """
+    Admin ViewSet for listing all withdrawals and updating the status of a withdrawal instance.
+    """
+    permission_classes = [IsSiteAdmin]
+
+    def get_serializer_class(self):
+        """
+        Map the action to the appropriate serializer class.
+        """
+        action_to_serializer = {
+            "list": WithdrawalSerializer.List,
+            "update_status": WithdrawalSerializer.UpdateStatus,
+        }
+        return action_to_serializer.get(self.action, WithdrawalSerializer.List)
+
+    @swagger_auto_schema(
+        operation_summary="List All Withdrawals",
+        operation_description=(
+            "Retrieve a list of all withdrawal requests, ordered by creation date. "
+            "Accessible only to admin users."
+        ),
+        responses={
+            200: openapi.Response(
+                description="List of withdrawals",
+                schema=WithdrawalSerializer.List(many=True)
+            ),
+            403: openapi.Response(description="Permission Denied"),
+        },
+    )
+    def list(self, request):
+        """
+        List all withdrawals for admin users.
+        """
+        if getattr(self, 'swagger_fake_view', False):
+            return Response([], status=status.HTTP_200_OK)
+
+        withdrawals = Withdrawal.objects.all().order_by('-created_at')
+        serializer_class = self.get_serializer_class()
+        serializer = serializer_class(withdrawals, many=True)
+        return Response(
+            success=True,
+            message="All withdrawals retrieved successfully.",
+            data=serializer.data,
+            status_code=status.HTTP_200_OK,
+        )
+
+    @swagger_auto_schema(
+        operation_summary="Update Withdrawal Status",
+        operation_description=(
+            "Update the status of a specific withdrawal request. "
+            "Allowed statuses are 'Processed' and 'Rejected'. "
+            "This endpoint also updates the user's wallet balance and notifies them of the status change."
+        ),
+        request_body=WithdrawalSerializer.UpdateStatus,
+        responses={
+            200: openapi.Response(
+                description="Withdrawal status updated successfully",
+                schema=WithdrawalSerializer.UpdateStatus
+            ),
+            404: openapi.Response(description="Withdrawal not found"),
+            400: openapi.Response(description="Validation error"),
+        },
+        manual_parameters=[
+            openapi.Parameter(
+                name="id",
+                in_=openapi.IN_PATH,
+                description="ID of the withdrawal request to update",
+                type=openapi.TYPE_INTEGER,
+                required=True,
+            )
+        ],
+    )
+    @action(detail=True, methods=["patch"], url_path="update-status")
+    def update_status(self, request, pk=None):
+        """
+        Update the status of a specific withdrawal instance.
+        """
+        try:
+            withdrawal = Withdrawal.objects.get(pk=pk)
+        except Withdrawal.DoesNotExist:
+            return Response(
+                success=False,
+                message="Withdrawal not found.",
+                data=None,
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer_class = self.get_serializer_class()
+        serializer = serializer_class(withdrawal, data=request.data, partial=True, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(
+            success=True,
+            message="Withdrawal status updated successfully.",
+            data=serializer.data,
+            status_code=status.HTTP_200_OK,
+        )
+
 
 
 class EventViewSet(StandardResponseMixin,ModelViewSet):

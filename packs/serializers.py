@@ -1,9 +1,9 @@
 from rest_framework import serializers
 from .models import Pack
-from administration.serializers import UserPartialSerilzer
+from administration.serializers import UserPartialSerializer
 
 class PackSerializer(serializers.ModelSerializer):
-    created_by = UserPartialSerilzer(read_only=True)
+    created_by = UserPartialSerializer(read_only=True)
     class Meta:
         model = Pack
         fields = [
