@@ -49,7 +49,7 @@ class Game(models.Model):
     special_product = models.BooleanField(default=False)
     game_number = models.IntegerField(null=True,blank=True)
     pending = models.BooleanField(default=False)
-    rating_no = models.CharField(max_length=11, unique=True, blank=True)  # Unique 11-digit number
+    rating_no = models.CharField(max_length=11,blank=True)  # Unique 11-digit number
     is_active = models.BooleanField(default=True)
     on_hold = models.ForeignKey(
         "wallet.OnHoldPay", 
