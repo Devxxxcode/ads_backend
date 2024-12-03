@@ -9,7 +9,7 @@ class PackSerializer(serializers.ModelSerializer):
         fields = [
             "id", "name", "usd_value", "daily_missions","short_description", 'description',
             "daily_withdrawals", "icon", "created_by", "is_active", 
-            "created_at", "updated_at",'payment_limit_to_trigger_bonus','payment_bonus'
+            "created_at", "updated_at",'payment_limit_to_trigger_bonus','payment_bonus','profit_percentage'
         ]
         read_only_fields = ["created_by", "created_at", "updated_at"]
 
