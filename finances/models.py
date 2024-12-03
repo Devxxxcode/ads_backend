@@ -99,6 +99,7 @@ class Withdrawal(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
+    is_reviewed = models.BooleanField(default=False, verbose_name="Has the admin updated the status")
 
     def __str__(self):
         return f"Withdrawal by {self.user.username} - {self.amount} USD - {self.status}"

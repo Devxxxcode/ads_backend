@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import Settings,Event
-from finances.models import Deposit
+from finances.models import Deposit,Withdrawal
 from shared.helpers import get_settings
 from users.models import Invitation
 # from users.serializers import UserPartialSerilzer
@@ -49,7 +49,7 @@ class SettingsVideoSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("The uploaded file is not a valid video format.")
         return value
 
-class UserPartialSerilzer(serializers.ModelSerializer):
+class UserPartialSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
@@ -70,7 +70,7 @@ class DepositSerializer:
         """
         Serializer for listing deposits.
         """
-        user = UserPartialSerilzer(read_only=True)
+        user = UserPartialSerializer(read_only=True)
         class Meta:
             model = Deposit
             fields = "__all__"
@@ -176,7 +176,7 @@ class DepositSerializer:
 
 
 class EventSerializer(serializers.ModelSerializer):
-    created_by = UserPartialSerilzer(read_only=True)
+    created_by = UserPartialSerializer(read_only=True)
     class Meta:
         model = Event
         fields = ['id', 'name', 'description', 'image', 'is_active', 'created_at','created_by']
@@ -188,3 +188,109 @@ class EventSerializer(serializers.ModelSerializer):
         """
         kwargs['created_by'] = self.context['request'].user
         return super().save(**kwargs)
+
+
+class WithdrawalSerializer:
+    """
+    Container for different Withdrawal serializers used in various actions.
+    """
+
+    class List(serializers.ModelSerializer):
+        """
+        Serializer for listing withdrawals.
+        """
+        user = UserPartialSerializer(read_only=True)
+
+        class Meta:
+            model = Withdrawal
+            fields = "__all__"
+            ref_name = "Withdrawal - List"
+            
+
+    class UpdateStatus(serializers.ModelSerializer):
+        """
+        Serializer for updating the status of a withdrawal.
+        """
+        class Meta:
+            model = Withdrawal
+            fields = [
+                "status",
+            ]
+            ref_name = "Withdrawal - UpdateStatus"
+
+        def validate_status(self, value):
+            """
+            Validate the status field.
+            """
+            allowed_statuses = ["Processed", "Rejected"]
+            if value not in allowed_statuses:
+                raise serializers.ValidationError(f"Invalid status: {value}. Allowed: {allowed_statuses}")
+            return value
+
+
+        def update(self, instance, validated_data):
+            """
+            Update the withdrawal status and adjust the user's wallet balance based on the status transition.
+            """
+            if instance.is_reviewed:
+                raise serializers.ValidationError({"error": "The withdrawal status has been processed before."})
+            
+            old_status = instance.status
+            new_status = validated_data.get("status")
+
+            # Ensure the new status is valid
+            allowed_statuses = ["Processed", "Rejected"]
+            if new_status not in allowed_statuses:
+                raise serializers.ValidationError({"error": f"Invalid status: {new_status}. Allowed statuses are: {allowed_statuses}"})
+
+            # Update the withdrawal instance
+            instance.status = new_status
+            instance.is_reviewed = True
+            instance.save()
+
+            user = instance.user
+
+            self.adjust_wallet_balance(
+                user=instance.user,
+                amount=instance.amount,
+                old_status=old_status,
+                new_status=new_status,
+            )
+
+            self.notify_user_on_status_change(user,new_status,instance.amount)
+
+            return instance
+
+
+        def adjust_wallet_balance(self, user, amount, old_status, new_status):
+            """
+            Adjust the user's wallet balance based on status changes.
+            """
+            if old_status != "Processed" and new_status == "Processed":
+                # Decrement wallet balance when status changes to Processed
+                print(f"Wallet decreased: User {user.id} balance is now {user.wallet.balance}")
+
+            elif old_status == "Processed" and new_status != "Processed":
+                # Increment wallet balance when status changes from Processed (rollback)
+                user.wallet.balance += amount
+                user.wallet.save()
+                print(f"Wallet increased: User {user.id} balance is now {user.wallet.balance}")
+
+        def notify_user_on_status_change(self, user, new_status, amount):
+            """
+            Notify the user of the withdrawal status change, including their new balance if rejected.
+            """
+            if new_status == "Rejected":
+                message = (
+                    f"Your withdrawal request of {amount:.2f} USD has been rejected. "
+                    f"Your current balance is now {user.wallet.balance:.2f} USD."
+                )
+            elif new_status == "Processed":
+                message = f"Your withdrawal request of {amount:.2f} USD has been processed successfully."
+            elif new_status == "Pending":
+                message = f"Your withdrawal request of {amount:.2f} USD is pending."
+            else:
+                message = f"Your withdrawal status has been updated to {new_status.lower()}."
+
+            # Send notification to the user
+            create_user_notification(user, "Withdrawal Status Update", message)
