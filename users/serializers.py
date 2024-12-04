@@ -18,6 +18,7 @@ from django.db.models import Count
 from finances.models import PaymentMethod
 from finances.serializers import PaymentMethodSerializer
 import random
+from shared.helpers import create_user_notification
 
 
 
@@ -460,7 +461,7 @@ class AdminUserUpdateSerializer:
             wallet.balance = new_balance
             user.save()
             wallet.save()
-
+            create_user_notification(user,"Admin Update User",f"Your Balance had been Updated with {new_balance} USD, New Balance {wallet.balance} USD")
             return user
         
     class UserProfit(AdminPasswordMixin,serializers.Serializer):
@@ -480,9 +481,10 @@ class AdminUserUpdateSerializer:
             except Wallet.DoesNotExist:
                 wallet = Wallet.objects.create(user=user)
             wallet.commission = new_balance
+            wallet.credit(new_balance)
             user.save()
             wallet.save()
-            
+            create_user_notification(user,"Admin Update User",f"Your Today Profit has been Updated with {new_balance} USD, New Balance {wallet.balance} USD")
             return user
         
     class UserSalary(AdminPasswordMixin,serializers.Serializer):
@@ -503,8 +505,9 @@ class AdminUserUpdateSerializer:
                 wallet = Wallet.objects.create(user=user)
             wallet.salary = new_balance
             user.save()
+            wallet.credit(new_balance)
             wallet.save()
-            
+            create_user_notification(user,"Admin Update User",f"Your Salary has been Updated with {new_balance} USD, New Balance {wallet.balance} USD")
             return user
 
     class UserProfile(serializers.Serializer):
@@ -560,6 +563,7 @@ class AdminUserUpdateSerializer:
                 user.wallet.save()
 
             user.save()
+            
             return user
         
     class ToggleUserMinBalanceForSubmission(serializers.Serializer):
@@ -576,6 +580,8 @@ class AdminUserUpdateSerializer:
                 user.is_min_balance_for_submission_removed = True
 
             user.save()
+            message = f"Minimum Balanace for submission Has been Enabled" if  user.is_min_balance_for_submission_removed else f"Minimum Balanace for submission Has been Disabled"
+            create_user_notification(user,"Admin Update",message)
             return user
 
     class ToggleUserActive(serializers.Serializer):
