@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Settings
+from .models import Settings,Event
 
 @admin.register(Settings)
 class SettingsAdmin(admin.ModelAdmin):
@@ -74,3 +74,28 @@ class SettingsAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         # Limit to a single instance
         return not Settings.objects.exists()
+
+@admin.register(Event)
+class EventAdmin(admin.ModelAdmin):
+    """
+    Admin configuration for the Event model.
+    """
+    list_display = ('name', 'is_active', 'created_at', 'created_by','image_preview')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('name', 'description', 'created_by__username')
+    readonly_fields = ('created_at',)
+    ordering = ('-created_at',)
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'description', 'image', 'is_active')
+        }),
+        ('Additional Info', {
+            'fields': ('created_at', 'created_by'),
+        }),
+    )
+
+    def image_preview(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" style="width: 50px; height: auto;" />', obj.image.url)
+        return "-"
+    image_preview.short_description = "Image"
