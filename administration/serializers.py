@@ -139,6 +139,9 @@ class DepositSerializer:
                 user.wallet.balance += amount
                 user.wallet.save()
                 self.handle_referral_bonus(user,amount)
+                create_user_notification(
+                    user,"Deposit Update",f"Your deposit of {amount} USD has validated. New Balance is {user.wallet.balance} USD"
+                )
                 print(f"Wallet increased: User {user.id} balance is now {user.wallet.balance}")
 
             elif old_status == "Confirmed" and new_status != "Confirmed":
@@ -146,6 +149,13 @@ class DepositSerializer:
                 user.wallet.balance -= amount
                 user.wallet.save()
                 print(f"Wallet decreased: User {user.id} balance is now {user.wallet.balance}")
+                create_user_notification(
+                    user,"Deposit Update",f"Your deposit of {amount} USD has been Cancelled. New Balance is {user.wallet.balance} USD"
+                )
+            else:
+                create_user_notification(
+                    user,"Deposit Update",f"Your deposit of {amount} USD has been Rejected. New Balance is {user.wallet.balance} USD"
+                )
 
         def handle_referral_bonus(user, amount):
             """
@@ -200,7 +210,6 @@ class WithdrawalSerializer:
         Serializer for listing withdrawals.
         """
         user = UserPartialSerializer(read_only=True)
-
         class Meta:
             model = Withdrawal
             fields = "__all__"
@@ -269,12 +278,18 @@ class WithdrawalSerializer:
             if old_status != "Processed" and new_status == "Processed":
                 # Decrement wallet balance when status changes to Processed
                 print(f"Wallet decreased: User {user.id} balance is now {user.wallet.balance}")
+                # create_user_notification(
+                #     user,"Withdrawal Update",f"Your Withdrawal of {amount} USD has been Processed."
+                # )
 
             elif old_status == "Processed" and new_status != "Processed":
                 # Increment wallet balance when status changes from Processed (rollback)
                 user.wallet.balance += amount
                 user.wallet.save()
                 print(f"Wallet increased: User {user.id} balance is now {user.wallet.balance}")
+                # create_user_notification(
+                #     user,"Withdrawal Update",f"Your Withdrawal of {amount} USD has been Rejected."
+                # )
 
         def notify_user_on_status_change(self, user, new_status, amount):
             """

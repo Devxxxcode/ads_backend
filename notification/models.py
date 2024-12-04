@@ -12,7 +12,13 @@ class Notification(models.Model):
         (ADMIN, 'Admin'),
     ]
 
-    user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="notifications")
+    user = models.ForeignKey(
+        "users.User",
+        on_delete=models.SET_NULL,
+        related_name="notifications",
+        null=True,
+        blank=True,
+    )
     title = models.CharField(max_length=255, null=True, blank=True)
     message = models.TextField()
     is_read = models.BooleanField(default=False)
@@ -31,6 +37,13 @@ class Notification(models.Model):
         Mark all notifications for a user as read.
         """
         cls.objects.filter(user=user, is_read=False,type=cls.USER).update(is_read=True)
+
+    @classmethod
+    def mark_all_admin_as_read(cls):
+        """
+        Mark all notifications for a user as read.
+        """
+        cls.objects.filter(is_read=False,type=cls.ADMIN).update(is_read=True)
 
     def mark_as_read(self):
         """
