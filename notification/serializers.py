@@ -97,7 +97,7 @@ class AdminNotification:
 class UserPartialSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id,",'username','email','phone_number','first_name','last_name']
+        fields = ["id",'username','email','phone_number','first_name','last_name']
 
 class AdminLogSerializer(serializers.ModelSerializer):
     user = UserPartialSerializer(read_only=True)
