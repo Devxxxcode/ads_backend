@@ -1,10 +1,11 @@
-from rest_framework.viewsets import ViewSet
+from rest_framework.viewsets import ViewSet,ReadOnlyModelViewSet
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated,IsAdminUser
 from rest_framework.decorators import action
 from rest_framework import status
-from .serializers import UserNotification,AdminNotification
-from .models import Notification
+from core.permissions import IsSiteAdmin,IsAdminOrReadOnly
+from .serializers import UserNotification,AdminNotification,AdminLogSerializer
+from .models import Notification,AdminLog
 from shared.mixins import StandardResponseMixin
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -90,7 +91,7 @@ class AdminNotificationViewSet(StandardResponseMixin, ViewSet):
     """
     ViewSet for managing notifications from an admin perspective.
     """
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsSiteAdmin]
 
     def list(self, request):
         """
@@ -160,3 +161,9 @@ class AdminNotificationViewSet(StandardResponseMixin, ViewSet):
             data=serializer.errors,
             status_code=status.HTTP_400_BAD_REQUEST
         )
+    
+
+class AdminLogReadView(ReadOnlyModelViewSet):
+    queryset = AdminLog.objects.all()
+    serializer_class = AdminLogSerializer
+    permission_classes = [IsSiteAdmin]
