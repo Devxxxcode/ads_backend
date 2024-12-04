@@ -26,7 +26,7 @@ class Notification(models.Model):
     type = models.CharField(max_length=10, choices=TYPE_CHOICES, default=USER)  # Type field
 
     def __str__(self):
-        return f"Notification for {self.user.username if self.user.username else 'admin'}: {self.title}"
+        return f"Notification for {self.user.username if self.user else 'admin'}: {self.title}"
 
     class Meta:
         ordering = ['is_read', '-created_at']
@@ -54,4 +54,19 @@ class Notification(models.Model):
             self.save()
 
 
+class AdminLog(models.Model):
+    user = models.ForeignKey(
+        "users.User",
+        on_delete=models.SET_NULL,
+        related_name="admin_logs",
+        null=True,
+        blank=True,
+    )
+    description = models.TextField(null=True,blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    reason = models.TextField(null=True,blank=True)
 
+    class Meta:
+        ordering = ['-created_at']
+
+    
