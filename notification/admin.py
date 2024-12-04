@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Notification
+from .models import Notification,AdminLog
 
 
 @admin.register(Notification)
@@ -18,3 +18,15 @@ class NotificationAdmin(admin.ModelAdmin):
             'fields': ('user', 'title', 'message', 'type', 'is_read', 'created_at')
         }),
     )
+
+
+@admin.register(AdminLog)
+class AdminLogAdmin(admin.ModelAdmin):
+    """
+    Admin panel configuration for AdminLog model.
+    """
+    list_display = ('user', 'description', 'reason', 'created_at')
+    list_filter = ('user', 'created_at')
+    search_fields = ('description', 'reason', 'user__username')
+    ordering = ('-created_at',)
+    readonly_fields = ('created_at',)

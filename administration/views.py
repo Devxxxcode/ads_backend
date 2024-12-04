@@ -12,7 +12,7 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Settings,Event
 from .serializers import SettingsSerializer,DepositSerializer,SettingsVideoSerializer,EventSerializer,WithdrawalSerializer
 from shared.utils import standard_response as Response
-from shared.helpers import get_settings
+from shared.helpers import get_settings,create_admin_log
 from shared.mixins import StandardResponseMixin
 from core.permissions import IsSiteAdmin,IsAdminOrReadOnly
 from finances.models import Deposit,Withdrawal
@@ -82,6 +82,7 @@ class SettingsViewSet(GenericViewSet):
         serializer = self.get_serializer(instance, data=request.data, partial=True)  # Partial update enabled
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        create_admin_log(request,"Updated the site settings")
         return Response(
             success=True,
             message="Settings updated successfully.",
@@ -130,7 +131,7 @@ class SettingsViewSet(GenericViewSet):
         serializer = SettingsVideoSerializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-
+        create_admin_log(request,"Updated the site video for the worker platform")
         return Response(
             success=True,
             message="Video updated successfully.",
@@ -312,6 +313,32 @@ class EventViewSet(StandardResponseMixin,ModelViewSet):
     queryset = Event.objects.all()
     serializer_class = EventSerializer
     permission_classes = [IsSiteAdmin]
+
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        create_admin_log(
+            request=request,
+            message="Created a new event",
+        )
+        return response
+    
+    def update(self, request, *args, **kwargs):
+        response = super().update(request, *args, **kwargs)
+        create_admin_log(
+            request=request,
+            message=f"Updated event with name: {response.data.name}.",
+        )
+        return response
+    
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        create_admin_log(
+            request=request,
+            message=f"Deleted event with name: {instance.name}.",
+        )
+        response = super().destroy(request, *args, **kwargs)
+        return response
+
 
 
 class AdminUserManagementViewSet(StandardResponseMixin,ReadOnlyModelViewSet):
@@ -503,6 +530,7 @@ class AdminNegativeUserManagementViewSet(StandardResponseMixin,ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         game = serializer.save()
+        create_admin_log(request,f"Added negative submission to user {game.user.username} ")
         return self.handle_action_response(game, "User Negative Submission Created Succussfully")
     
 
@@ -515,6 +543,7 @@ class AdminNegativeUserManagementViewSet(StandardResponseMixin,ModelViewSet):
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         updated_game = serializer.save()
+        create_admin_log(request,f"Update negative submission for user {updated_game.user.username} ")
         return self.handle_action_response(updated_game, "User Negative Submission Created Succussfully")
 
     def destroy(self, request, *args, **kwargs):
@@ -522,6 +551,7 @@ class AdminNegativeUserManagementViewSet(StandardResponseMixin,ModelViewSet):
         delete the nagative game
         """
         instance = self.get_object()
+        create_admin_log(request,f"Deleted the Negative User Submission for user {instance.user.username}")
         instance.delete()
         return self.standard_response(
                 success=True,

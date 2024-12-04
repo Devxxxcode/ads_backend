@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Notification
+from .models import Notification,AdminLog
+
 class UserNotification:
 
     class NotificationSerializer(serializers.ModelSerializer):
@@ -89,3 +90,9 @@ class AdminNotification:
             notification = self.validated_data['notification_id']
             notification.mark_as_read()
             return notification
+        
+
+class AdminLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AdminLog
+        fields = "__all__"
