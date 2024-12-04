@@ -1,5 +1,8 @@
 from rest_framework import serializers
 from .models import Notification,AdminLog
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class UserNotification:
 
@@ -90,9 +93,14 @@ class AdminNotification:
             notification = self.validated_data['notification_id']
             notification.mark_as_read()
             return notification
-        
+
+class UserPartialSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id,",'username','email','phone_number','first_name','last_name']
 
 class AdminLogSerializer(serializers.ModelSerializer):
+    user = UserPartialSerializer(read_only=True)
     class Meta:
         model = AdminLog
         fields = "__all__"
