@@ -136,7 +136,7 @@ class DepositSerializer:
             """
             if old_status != "Confirmed" and new_status == "Confirmed":
                 # Increment wallet balance when status changes to Confirmed
-                user.wallet.balance += amount
+                user.wallet.credit(amount)
                 user.wallet.save()
                 self.handle_referral_bonus(user,amount)
                 create_user_notification(
@@ -157,7 +157,7 @@ class DepositSerializer:
                     user,"Deposit Update",f"Your deposit of {amount} USD has been Rejected. New Balance is {user.wallet.balance} USD"
                 )
 
-        def handle_referral_bonus(user, amount):
+        def handle_referral_bonus(self,user, amount):
             """
             Check if the user has an associated invitation and award the referral bonus if applicable.
             """

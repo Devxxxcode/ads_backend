@@ -70,7 +70,7 @@ class PlayGameService:
             self.wallet.credit(amount + commission)
             self.wallet.credit_commission(commission)
         else:
-            if self.wallet.balance < amount:
+            if self.wallet.balance < amount and game.special_product:
                 game.pending = True
                 game.save()
                 self.wallet.on_hold = self.wallet.balance - amount
@@ -78,8 +78,7 @@ class PlayGameService:
                 self.wallet.save()
                 return False, "Insufficient balance to make this submission."
 
-            self.wallet.debit(amount)
-            self.wallet.credit(amount + commission)
+            self.wallet.credit(commission)
             self.wallet.credit_commission(commission)
 
         game.rating_score = rating_score

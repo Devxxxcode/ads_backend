@@ -70,10 +70,14 @@ class Wallet(models.Model):
         if amount < 0:
             raise ValueError("Credit amount must be positive.")
         
-        if self.on_hold != 0:
-            amount += self.on_hold
-            self.on_hold = 0  # Reset on_hold after processing
-        
+        if self.on_hold < 0: 
+            if amount + self.on_hold >= 0:
+                amount += self.on_hold 
+                self.on_hold = 0  
+            else:
+                self.on_hold += amount  
+                amount = 0 
+
         self.balance += amount
         self.save()
 
