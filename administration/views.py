@@ -382,7 +382,10 @@ class AdminUserManagementViewSet(StandardResponseMixin,ReadOnlyModelViewSet):
             return AdminUserUpdateSerializer.UserProfile
         elif self.action == 'toggle_user_active':
             return AdminUserUpdateSerializer.ToggleUserActive
+        elif self.action == "reset_user_account":
+            return AdminUserUpdateSerializer.ResetUserAccount
         return super().get_serializer_class()
+    
     
     def handle_action_response(self, data, message="Action completed successfully.",override_serializer=None):
         """
@@ -488,6 +491,16 @@ class AdminUserManagementViewSet(StandardResponseMixin,ReadOnlyModelViewSet):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         return self.handle_action_response(user, "User has be Actived back" if user.is_active else "User has been deactivated successfully")
+    
+    @action(detail=False, methods=['post'], url_path='reset_user_account')
+    def reset_user_account(self,request):
+        """
+        Reset the user Account 
+        """
+        serializer =  self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return self.handle_action_response(user, "User Account has been reset successfully")
     
 class OnHoldViewSet(StandardResponseMixin,ModelViewSet):
     queryset = OnHoldPay.objects.all()

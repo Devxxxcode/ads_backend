@@ -132,6 +132,9 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     objects = UserManager()
 
+    number_of_submission_today =  models.IntegerField(null=True,blank=True,verbose_name="the total number of submission done today",default=0)
+    number_of_submission_set_today = models.IntegerField(null=True,blank=True,verbose_name="the total number of submission done set completed today",default=0)
+
     USERNAME_FIELD = "username"
     EMAIL_FIELD = "email"
     REQUIRED_FIELDS = ["email"]

@@ -1,7 +1,7 @@
 from django.utils.timezone import now, timedelta
 from .models import Game, Product,generate_unique_rating_no
 import random
-from shared.helpers import get_settings
+from shared.helpers import get_settings,create_admin_notification,create_user_notification
 
 
 class PlayGameService:
@@ -14,6 +14,7 @@ class PlayGameService:
         self.total_number_can_play = total_number_can_play
         self.wallet = wallet
         self.settings = get_settings()
+        self.pack = wallet.package
 
     def check_can_user_play(self):
         """
@@ -26,9 +27,33 @@ class PlayGameService:
             min_balance = getattr(self.settings, 'minimum_balance_for_submissions', 100)
             if self.wallet.balance < min_balance:
                 return False, f"You need a minimum of {min_balance} USD balnce to make a submission."
-        if Game.count_games_played_today(self.user) >= self.total_number_can_play:
-            return False, "You have reached the maximum number of submissions you can make today, upgrade you package"
+        cancel_play, messgae = self.user_has_completed_all_set_or_needs_reset()
+        if cancel_play:
+            return False,messgae
         return True, ""
+    
+    def get_ordinal(self,number):
+        """
+        Convert an integer into its ordinal representation.
+        E.g., 1 -> '1st', 2 -> '2nd', 3 -> '3rd', etc.
+        """
+        if 10 <= number % 100 <= 20:
+            suffix = "th"
+        else:
+            suffix = {1: "st", 2: "nd", 3: "rd"}.get(number % 10, "th")
+        return f"{number}{suffix}"
+
+    def user_has_completed_all_set_or_needs_reset(self):
+        """
+        Check if the user has completed all sets or needs to reset.
+        Returns a tuple: (has_completed: bool, message: str)
+        """
+        set_number = self.get_ordinal(self.user.number_of_submission_set_today + 1)
+        if Game.count_games_played_today(self.user) >= self.total_number_can_play and self.pack.number_of_set > self.user.number_of_submission_set_today: 
+            return True, f"Good job!!!. The {set_number} set of the submission. Kindly request for the next sets."
+        if Game.count_games_played_today(self.user) >= self.total_number_can_play and self.pack.number_of_set <= self.user.number_of_submission_set_today: 
+            return True, f"Good job!!!. You have completed all {self.user.number_of_submission_set_today + 1} submission sets for today!!!"
+        return False,""
     
     def check_can_user_play_pending_game(self):
         """
@@ -67,14 +92,13 @@ class PlayGameService:
         commission = game.commission
 
         if game.pending:
-            self.wallet.credit(amount + commission)
+            self.wallet.credit(commission)
             self.wallet.credit_commission(commission)
         else:
             if self.wallet.balance < amount and game.special_product:
                 game.pending = True
                 game.save()
                 self.wallet.on_hold = self.wallet.balance - amount
-                self.wallet.balance = 0
                 self.wallet.save()
                 return False, "Insufficient balance to make this submission."
 
@@ -85,6 +109,18 @@ class PlayGameService:
         game.comment = comment
         game.played = True
         game.pending = False
+        self.user.number_of_submission_today +=1
+        self.user.save()
+        if self.user.number_of_submission_today >= self.total_number_can_play:
+            self.user.number_of_submission_set_today += 1
+            self.user.save()
+            set_number = self.get_ordinal(self.user.number_of_submission_set_today + 1)
+            create_admin_notification("Worker Set Completed",f"{self.user.username} has completed all submission in the  for today")
+            
+        if self.user.number_of_submission_set_today >=  self.pack.number_of_set:
+            create_user_notification(self.user,"Submission Set Completed","You have compeleted all your submission set for today!!!!!!")
+            create_admin_notification("Worker Set Completed",f"{self.user.username} has completed all submission set for today")
+        self.user()
         game.save()
 
         return True, ""
@@ -113,9 +149,17 @@ class PlayGameService:
         if not available_products.exists():
             return None, "No new submission available for you. Check back later"
 
+        affordable_products = [
+            product for product in available_products
+            if product.price <= self.wallet.balance
+        ]
+
+        if not affordable_products:
+            return None, "No new submission available within your level, Update your current level"
+
         # Randomly select 1 or 2 products from the available list
-        product_count = random.choice([1, 2])
-        selected_products = random.sample(list(available_products), min(product_count, len(available_products)))
+        product_count = random.choice([1, 1])
+        selected_products = random.sample(list(affordable_products), min(product_count, len(affordable_products)))
 
         # Calculate the total amount and commission
         total_amount = sum(product.price for product in selected_products)

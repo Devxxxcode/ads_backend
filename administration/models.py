@@ -19,6 +19,7 @@ class Settings(models.Model):
     telegram_contact = models.CharField(max_length=100, blank=True, null=True, verbose_name="Telegram Contact")
     telegram_username = models.CharField(max_length=100, blank=True, null=True, verbose_name="Telegram Username")
     online_chat_url = models.URLField(blank=True, null=True, verbose_name="Online Chat URL")
+    online_embed_url =  models.URLField(blank=True, null=True, verbose_name="Online Embed URL")
     erc_address = models.CharField(max_length=100, blank=True, null=True, verbose_name="ERC Address")
     trc_address = models.CharField(max_length=100, blank=True, null=True, verbose_name="TRC Address")
     minimum_balance_for_submissions = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, verbose_name="Minimum Balance for Submissions")

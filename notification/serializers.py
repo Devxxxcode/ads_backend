@@ -98,6 +98,7 @@ class UserPartialSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["id",'username','email','phone_number','first_name','last_name']
+        ref_name = "notification_ partial user"
 
 class AdminLogSerializer(serializers.ModelSerializer):
     user = UserPartialSerializer(read_only=True)
