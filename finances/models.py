@@ -130,7 +130,18 @@ class Withdrawal(models.Model):
                 f"Complete all {total_play} submission{'s' if total_play > 1 else ''} "
                 f"before you are able to withdraw."
             )
+        if user.number_of_submission_set_today < pack.number_of_set:
+            return False, (
+                f"Complete all {pack.number_of_set} submission{'s' if pack.number_of_set > 1 else ''} set"
+                f"before you are able to withdraw."
+            )
         total_withdrawal_for_today = cls.total_count_of_today_withdrawal(user)
+        remaining_balance_after_withdrawal = balance - amount
+        least_bal_for_pack = pack.usd_value
+        if remaining_balance_after_withdrawal < least_bal_for_pack:
+            return False, (
+                f"Insufficient balance, You need at least {least_bal_for_pack} USD in your wallet to keep your Level. withdrawal a lesser amount"
+            )
         if total_withdrawal_for_today >= max_no_of_withdrawal:
             return False, f"You have reached the maximum number of withdrawal for today"
         if not user.check_transactional_password(transactional_password):

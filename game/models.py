@@ -79,17 +79,18 @@ class Game(models.Model):
         Count the number of games a user has played today.
         """
         # Calculate the start and end of the current day
-        start_of_day = now().replace(hour=0, minute=0, second=0, microsecond=0)
-        end_of_day = start_of_day + timedelta(days=1)
+        # start_of_day = now().replace(hour=0, minute=0, second=0, microsecond=0)
+        # end_of_day = start_of_day + timedelta(days=1)
 
-        # Count games played by the user today
-        return cls.objects.filter(
-            user=user,
-            played=True,  # Ensure we only count played games
-            is_active=True,
-            created_at__gte=start_of_day,
-            created_at__lt=end_of_day
-        ).count()
+        # # Count games played by the user today
+        # return cls.objects.filter(
+        #     user=user,
+        #     played=True,  # Ensure we only count played games
+        #     is_active=True,
+        #     created_at__gte=start_of_day,
+        #     created_at__lt=end_of_day
+        # ).count()
+        return user.number_of_submission_today
     
     @classmethod
     def user_has_pending_game(cls,user):

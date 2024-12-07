@@ -50,6 +50,7 @@ class Pack(models.Model):
             # MaxValueValidator(100.00)
         ]
     )
+    number_of_set = models.PositiveIntegerField(verbose_name="NUmber of set for submissions",default=1)
 
     short_description = models.TextField(verbose_name="the short description for the pack")
     description = models.TextField(verbose_name="the long description for the pack")

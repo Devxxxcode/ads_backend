@@ -393,7 +393,7 @@ class UserProfileListSerializer(serializers.ModelSerializer):
     total_negative_product_submitted = serializers.SerializerMethodField(read_only=True)
     class Meta:
         model = User
-        fields = ['id','username','email','phone_number','first_name','last_name','gender','referral_code','profile_picture','last_connection','is_active','date_joined','wallet','total_play','total_available_play','total_product_submitted','total_negative_product_submitted','is_min_balance_for_submission_removed','is_reg_balance_add']
+        fields = ['id','username','email','phone_number','first_name','last_name','gender','referral_code','profile_picture','last_connection','is_active','date_joined','wallet','total_play','total_available_play','total_product_submitted','total_negative_product_submitted','is_min_balance_for_submission_removed','is_reg_balance_add','number_of_submission_set_today']
         read_only_fields = ['date_joined','referral_code',]
 
     def get_total_play(self,obj):
@@ -409,7 +409,7 @@ class UserProfileListSerializer(serializers.ModelSerializer):
     def get_total_negative_product_submitted(self,obj):
         return Game.objects.filter(user=obj,special_product=True,played=True,is_active=True).count()
 
-    def get_total_product_submitted(Self,obj):
+    def get_total_product_submitted(self,obj):
         return Game.objects.filter(user=obj,played=True,is_active=True).count()
 
 class AdminUserUpdateSerializer:
@@ -596,3 +596,15 @@ class AdminUserUpdateSerializer:
             user.save()
             return user
 
+    class ResetUserAccount(AdminPasswordMixin,serializers.Serializer):
+        user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(),required=True)
+
+        def save(self):
+            """
+            Reset User Account
+            """
+            user = self.validated_data['user']
+            user.number_of_submission_today = 0
+            create_user_notification(user,"Account Reset","Your account has been successfully rested,Procees to make your submissions")
+            user.save()
+            return user
