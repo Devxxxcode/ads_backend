@@ -133,6 +133,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
     number_of_submission_today =  models.IntegerField(null=True,blank=True,verbose_name="the total number of submission done today",default=0)
+    today_profit =  models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        default=0.00,
+        verbose_name="Today profit earned Earned"
+    )
     number_of_submission_set_today = models.IntegerField(null=True,blank=True,verbose_name="the total number of submission done set completed today",default=0)
 
     USERNAME_FIELD = "username"

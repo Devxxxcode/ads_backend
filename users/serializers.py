@@ -393,7 +393,7 @@ class UserProfileListSerializer(serializers.ModelSerializer):
     total_negative_product_submitted = serializers.SerializerMethodField(read_only=True)
     class Meta:
         model = User
-        fields = ['id','username','email','phone_number','first_name','last_name','gender','referral_code','profile_picture','last_connection','is_active','date_joined','wallet','total_play','total_available_play','total_product_submitted','total_negative_product_submitted','is_min_balance_for_submission_removed','is_reg_balance_add','number_of_submission_set_today']
+        fields = ['id','username','email','phone_number','first_name','last_name','gender','referral_code','profile_picture','last_connection','is_active','date_joined','wallet','total_play','total_available_play','total_product_submitted','total_negative_product_submitted','is_min_balance_for_submission_removed','is_reg_balance_add','number_of_submission_set_today','today_profit']
         read_only_fields = ['date_joined','referral_code',]
 
     def get_total_play(self,obj):
