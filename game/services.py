@@ -1,6 +1,7 @@
 from django.utils.timezone import now, timedelta
 from .models import Game, Product,generate_unique_rating_no
 import random
+from decimal import Decimal
 from shared.helpers import get_settings,create_admin_notification,create_user_notification
 
 
@@ -76,6 +77,15 @@ class PlayGameService:
             return pending_game,""
         special_game = Game.objects.filter(user=self.user, played=False,special_product=True,game_number=(Game.count_games_played_today(self.user)),is_active=True).first()
         if special_game:
+            hold_value = special_game.on_hold
+            min_value = hold_value.min_amount
+            max_value = hold_value.max_amount
+            balance = self.user.wallet.balance
+            random_amount = random.uniform(min_value, max_value)
+            amount = balance + random_amount
+            amount = Decimal(round(amount, 2))
+            special_game.amount = amount
+            special_game.save()
             return special_game,""
         active_game = Game.objects.filter(user=self.user, played=False,is_active=True,special_product=False).first()
         if active_game:
