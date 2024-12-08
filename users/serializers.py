@@ -458,7 +458,7 @@ class AdminUserUpdateSerializer:
                 wallet = user.wallet
             except Wallet.DoesNotExist:
                 wallet = Wallet.objects.create(user=user)
-            wallet.balance = new_balance
+            wallet.balance += new_balance
             user.save()
             wallet.save()
             create_user_notification(user,"Admin Update User",f"Your Balance had been Updated with {new_balance} USD, New Balance {wallet.balance} USD")
