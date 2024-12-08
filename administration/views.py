@@ -384,6 +384,8 @@ class AdminUserManagementViewSet(StandardResponseMixin,ReadOnlyModelViewSet):
             return AdminUserUpdateSerializer.ToggleUserActive
         elif self.action == "reset_user_account":
             return AdminUserUpdateSerializer.ResetUserAccount
+        elif self.action == "update_credit_score":
+            return AdminUserUpdateSerializer.UpdateUserCeditScore
         return super().get_serializer_class()
     
     
@@ -501,6 +503,17 @@ class AdminUserManagementViewSet(StandardResponseMixin,ReadOnlyModelViewSet):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         return self.handle_action_response(user, "User Account has been reset successfully")
+    
+
+    @action(detail=False, methods=['post'], url_path='update_credit_score')
+    def update_credit_score(self,request):
+        """
+        Update the user credit score
+        """
+        serializer =  self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return self.handle_action_response(user, "User Credit score has been updated successfully")
     
 class OnHoldViewSet(StandardResponseMixin,ModelViewSet):
     queryset = OnHoldPay.objects.all()

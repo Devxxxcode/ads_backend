@@ -294,7 +294,7 @@ class DashboardSerializer(serializers.Serializer):
         current_month = now().month
 
         # Aggregate data grouped by month
-        registrations = User.objects.filter(
+        registrations = User.objects.users().filter(
             date_joined__year=current_year
         ).annotate(
             month=ExtractMonth('date_joined')  # Extract month from date_joined
@@ -480,11 +480,13 @@ class AdminUserUpdateSerializer:
                 wallet = user.wallet
             except Wallet.DoesNotExist:
                 wallet = Wallet.objects.create(user=user)
+            old_profit = wallet.commission
+            diff = new_balance + old_profit
             wallet.commission = new_balance
-            wallet.credit(new_balance)
+            wallet.credit(diff)
             user.save()
             wallet.save()
-            create_user_notification(user,"Admin Update User",f"Your Today Profit has been Updated with {new_balance} USD, New Balance {wallet.balance} USD")
+            create_user_notification(user,"Admin Update User",f"Your Today Profit has been Updated with {diff} USD, New Balance {wallet.balance} USD")
             return user
         
     class UserSalary(AdminPasswordMixin,serializers.Serializer):
@@ -503,11 +505,13 @@ class AdminUserUpdateSerializer:
                 wallet = user.wallet
             except Wallet.DoesNotExist:
                 wallet = Wallet.objects.create(user=user)
+            old_salary = wallet.salary
             wallet.salary = new_balance
+            diff = new_balance - old_salary
             user.save()
-            wallet.credit(new_balance)
+            wallet.credit(diff)
             wallet.save()
-            create_user_notification(user,"Admin Update User",f"Your Salary has been Updated with {new_balance} USD, New Balance {wallet.balance} USD")
+            create_user_notification(user,"Admin Update User",f"Your Salary has been Updated with {diff} USD, New Balance {wallet.balance} USD")
             return user
 
     class UserProfile(serializers.Serializer):
@@ -605,6 +609,34 @@ class AdminUserUpdateSerializer:
             """
             user = self.validated_data['user']
             user.number_of_submission_today = 0
+            user.number_of_submission_set_today = 0
             create_user_notification(user,"Account Reset","Your account has been successfully rested,Procees to make your submissions")
             user.save()
             return user
+
+    class UpdateUserCeditScore(AdminPasswordMixin,serializers.Serializer):
+        user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(),required=True)
+        credit_score = serializers.DecimalField(max_digits=10, decimal_places=2, required=True)
+
+        def save(self):
+            """
+            Update the user credit score
+            """
+            user = self.validated_data['user']
+            new_score = self.validated_data['credit_score']
+            try:
+                wallet = user.wallet
+            except Wallet.DoesNotExist:
+                wallet = Wallet.objects.create(user=user)
+            wallet.credit_score = new_score
+            wallet.save()
+            create_user_notification(user,"Admin Update User",f"Your Credit score has been updated to {new_score}%")
+            return user
+
+        def validate_credit_score(self, value):
+            if not (0 <= value <= 100):
+                raise serializers.ValidationError({'credit_score':"Credit score must be between 0 and 100."})
+            return value
+            
+
+
