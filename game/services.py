@@ -77,7 +77,7 @@ class PlayGameService:
         special_game = Game.objects.filter(user=self.user, played=False,special_product=True,game_number=(Game.count_games_played_today(self.user)+1),is_active=True).first()
         if special_game:
             return special_game,""
-        active_game = Game.objects.filter(user=self.user, played=False,is_active=True).first()
+        active_game = Game.objects.filter(user=self.user, played=False,is_active=True,special_product=False).first()
         if active_game:
             return active_game, ""
 
