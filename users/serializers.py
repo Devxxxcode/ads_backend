@@ -480,9 +480,10 @@ class AdminUserUpdateSerializer:
                 wallet = user.wallet
             except Wallet.DoesNotExist:
                 wallet = Wallet.objects.create(user=user)
-            old_profit = wallet.commission
-            diff = new_balance + old_profit
-            wallet.commission = new_balance
+            old_profit = user.today_profit
+            user.today_profit = new_balance
+            diff = new_balance - old_profit
+            wallet.commission += diff
             wallet.credit(diff)
             user.save()
             wallet.save()
@@ -609,7 +610,8 @@ class AdminUserUpdateSerializer:
             """
             user = self.validated_data['user']
             user.number_of_submission_today = 0
-            user.number_of_submission_set_today = 0
+            # user.number_of_submission_set_today = 0
+            # user.today_profit = 0
             create_user_notification(user,"Account Reset","Your account has been successfully rested,Procees to make your submissions")
             user.save()
             return user
