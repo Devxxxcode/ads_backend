@@ -145,22 +145,31 @@ class AdminNegativeUserSerializer:
         def save(self):
             """Create or update a negative game for the user"""
             user = self.validated_data['user']
-            profit_percentage = user.wallet.package.profit_percentage
+            profit_percentage = Decimal(user.wallet.package.profit_percentage)  # Ensure Decimal type
             on_hold = self.validated_data['on_hold']
-            number_of_negative_product = self.validated_data.get('number_of_negative_product', self.instance.products.count() if self.instance else 0)
-            rank_appearance = self.validated_data.get('rank_appearance', self.instance.game_number if self.instance else None)
+            number_of_negative_product = self.validated_data.get(
+                'number_of_negative_product', 
+                self.instance.products.count() if self.instance else 0
+            )
+            rank_appearance = self.validated_data.get(
+                'rank_appearance', 
+                self.instance.game_number if self.instance else None
+            )
             products = Product.objects.order_by('?')[:number_of_negative_product]
-            on_hold_min = float(on_hold.min_amount)  # Convert Decimal to float
-            on_hold_max = float(on_hold.max_amount)  # Convert Decimal to float
+
+            # Convert min and max to float for `random.uniform`
+            on_hold_min = float(on_hold.min_amount)
+            on_hold_max = float(on_hold.max_amount)
             balance = user.wallet.balance
 
-            # Generate a random amount between min and max
-            random_amount = random.uniform(on_hold_min, on_hold_max)
+            # Generate a random amount between min and max, then convert to Decimal
+            random_amount = Decimal(random.uniform(on_hold_min, on_hold_max))
             amount = balance + random_amount
-            amount = Decimal(round(random_amount, 2))  # Convert back to Decimal
+            amount = amount.quantize(Decimal("0.01"))  # Ensure two decimal places
 
             # Calculate commission
-            commission = (amount * Decimal(profit_percentage) / Decimal(100)) * Decimal(5)
+            commission = (amount * profit_percentage / Decimal(100)) * Decimal(5)
+            commission = commission.quantize(Decimal("0.01"))  # Ensure two decimal place
 
             if self.instance:
                 # Update existing instance

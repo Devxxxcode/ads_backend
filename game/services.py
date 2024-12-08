@@ -78,15 +78,17 @@ class PlayGameService:
         special_game = Game.objects.filter(user=self.user, played=False,special_product=True,game_number=(Game.count_games_played_today(self.user)),is_active=True).first()
         if special_game:
             hold_value = special_game.on_hold
-            min_value = hold_value.min_amount
-            max_value = hold_value.max_amount
+            min_value = float(hold_value.min_amount)  # Convert to float
+            max_value = float(hold_value.max_amount)  # Convert to float
             balance = self.user.wallet.balance
-            random_amount = random.uniform(min_value, max_value)
+
+            random_amount = Decimal(random.uniform(min_value, max_value))  # Generate a random float and convert to Decimal
             amount = balance + random_amount
-            amount = Decimal(round(amount, 2))
+            amount = Decimal(round(amount, 2))  # Round to 2 decimal places
             special_game.amount = amount
             special_game.save()
-            return special_game,""
+
+            return special_game, ""
         active_game = Game.objects.filter(user=self.user, played=False,is_active=True,special_product=False).first()
         if active_game:
             return active_game, ""
