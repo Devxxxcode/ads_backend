@@ -2,6 +2,8 @@ from django.db import models
 from cloudinary_storage.storage import MediaCloudinaryStorage
 from cloudinary.models import CloudinaryField
 import cloudinary
+from django.db import models
+from django.utils.timezone import now
 from django.contrib.auth import get_user_model
 
 # User = get_user_model()
@@ -65,3 +67,22 @@ class Event(models.Model):
     
     class Meta:
         ordering = ['-created_at']
+
+
+def midnight_today():
+    """
+    Returns 12:00 AM of the current day in the current timezone.
+    """
+    current_time = now()
+    midnight = current_time.replace(hour=0, minute=0, second=0, microsecond=0)
+    return midnight
+
+
+class DailyResetTracker(models.Model):
+    last_reset_time = models.DateTimeField(default=midnight_today, verbose_name="Last Reset Time")
+    reset_interval_hours = models.DecimalField(
+        max_digits=5,  # Maximum number of digits, including decimals
+        decimal_places=2,  # Number of decimal places
+        default=24.00,  # Default to 24 hours
+        verbose_name="Reset Interval in Hours",
+    )
