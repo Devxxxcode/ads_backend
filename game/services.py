@@ -74,7 +74,7 @@ class PlayGameService:
         pending_game = Game.objects.filter(user=self.user, played=False,pending=True,is_active=True).first()
         if pending_game:
             return pending_game,""
-        special_game = Game.objects.filter(user=self.user, played=False,special_product=True,game_number=(Game.count_games_played_today(self.user)+1),is_active=True).first()
+        special_game = Game.objects.filter(user=self.user, played=False,special_product=True,game_number=(Game.count_games_played_today(self.user)),is_active=True).first()
         if special_game:
             return special_game,""
         active_game = Game.objects.filter(user=self.user, played=False,is_active=True,special_product=False).first()
@@ -92,7 +92,7 @@ class PlayGameService:
         commission = game.commission
 
         if game.pending:
-            self.wallet.credit(amount + commission)
+            self.wallet.credit(commission)
             self.wallet.credit_commission(commission)
         else:
             if self.wallet.balance < amount and game.special_product:
