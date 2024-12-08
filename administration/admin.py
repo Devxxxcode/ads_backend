@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Settings,Event
+from .models import Settings,Event,DailyResetTracker
 
 @admin.register(Settings)
 class SettingsAdmin(admin.ModelAdmin):
@@ -99,3 +99,15 @@ class EventAdmin(admin.ModelAdmin):
             return format_html('<img src="{}" style="width: 50px; height: auto;" />', obj.image.url)
         return "-"
     image_preview.short_description = "Image"
+
+
+@admin.register(DailyResetTracker)
+class DailyResetTrackerAdmin(admin.ModelAdmin):
+    """
+    Admin interface for the DailyResetTracker model.
+    """
+    list_display = ('last_reset_time', 'reset_interval_hours') 
+    list_editable = ('reset_interval_hours',) 
+    readonly_fields = ('last_reset_time',)
+    ordering = ('-last_reset_time',) 
+    search_fields = ('last_reset_time',)

@@ -139,7 +139,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     settings = serializers.SerializerMethodField(read_only=True)
     class Meta:
         model = User
-        fields = ['id','username','email','phone_number','first_name','last_name','gender','referral_code','profile_picture','last_connection','is_active','date_joined','wallet','settings']
+        fields = ['id','username','email','phone_number','first_name','last_name','gender','referral_code','profile_picture','last_connection','is_active','date_joined','wallet','settings','today_profit']
         read_only_fields = ['date_joined','referral_code']
         ref_name = "UserProfileSerializer "
     
@@ -612,7 +612,7 @@ class AdminUserUpdateSerializer:
             user.number_of_submission_today = 0
             # user.number_of_submission_set_today = 0
             # user.today_profit = 0
-            create_user_notification(user,"Account Reset","Your account has been successfully rested,Procees to make your submissions")
+            create_user_notification(user,"Account Reset","Your account has been successfully reseted, Procees to make your submissions")
             user.save()
             return user
 

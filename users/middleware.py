@@ -1,5 +1,10 @@
 from datetime import datetime
 from django.utils.timezone import now
+from django.utils.timezone import now, timedelta
+from administration.models import DailyResetTracker
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 
 class UpdateLastConnectionMiddleware:
@@ -30,3 +35,47 @@ class CustomJWTAuthentication(JWTAuthentication):
                 user[0].last_connection = now()
                 user[0].save(update_fields=['last_connection'])
         return user
+
+
+class ConfigurableResetMiddleware:
+    """
+    Middleware to reset user submission-related fields based on a configurable time interval.
+    """
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        # Ensure the reset action is performed
+        self.check_and_reset_fields()
+
+        # Proceed with the response
+        response = self.get_response(request)
+        return response
+
+    def check_and_reset_fields(self):
+        """
+        Check the last reset time and reset fields if the interval has passed.
+        """
+        # Get or create the tracker entry
+        tracker, created = DailyResetTracker.objects.get_or_create(id=1)  # Use a fixed ID for simplicity
+
+        # Calculate the reset interval in hours
+        reset_interval = timedelta(hours=float(tracker.reset_interval_hours))  # Convert to float
+
+        # Perform reset if the interval has passed
+        if now() >= tracker.last_reset_time + reset_interval:
+            self.perform_reset()
+            # Update the last reset time
+            tracker.last_reset_time = now()
+            tracker.save()
+
+    def perform_reset(self):
+        """
+        Reset user fields to their default values.
+        """
+        User.objects.update(
+            number_of_submission_today=0,
+            today_profit=0.00,
+            number_of_submission_set_today=0
+        )
+        print("User fields reset successfully.")
