@@ -50,7 +50,7 @@ class PlayGameService:
         """
         set_number = self.get_ordinal(self.user.number_of_submission_set_today + 1)
         if Game.count_games_played_today(self.user) >= self.total_number_can_play and self.pack.number_of_set > self.user.number_of_submission_set_today: 
-            return True, f"Good job!!!. The {set_number} set of the submission. Kindly request for the next sets."
+            return True, f"Good job!!!. The {set_number} set of the submission has been completed. Kindly request for the next sets."
         if Game.count_games_played_today(self.user) >= self.total_number_can_play and self.pack.number_of_set <= self.user.number_of_submission_set_today: 
             return True, f"Good job!!!. You have completed all {self.user.number_of_submission_set_today + 1} submission sets for today!!!"
         return False,""
@@ -110,16 +110,19 @@ class PlayGameService:
         game.played = True
         game.pending = False
         self.user.number_of_submission_today +=1
+        self.user.today_profit +=commission
         self.user.save()
         if self.user.number_of_submission_today >= self.total_number_can_play:
             self.user.number_of_submission_set_today += 1
             self.user.save()
             set_number = self.get_ordinal(self.user.number_of_submission_set_today + 1)
-            create_admin_notification("Worker Set Completed",f"{self.user.username} has completed all submission in the  for today")
+            create_admin_notification("Worker Set Completed",f"{self.user.username} has completed all submissions in the {set_number} set, You can proceed to reset account")
+            if self.user.number_of_submission_set_today <  self.pack.number_of_set:
+                create_user_notification(self.user,"Submission Completed",f"Good job!!!. The {set_number} set of the submission has been completed. Kindly request for the next sets.")
             
         if self.user.number_of_submission_set_today >=  self.pack.number_of_set:
-            create_user_notification(self.user,"Submission Set Completed","You have compeleted all your submission set for today!!!!!!")
-            create_admin_notification("Worker Set Completed",f"{self.user.username} has completed all submission set for today")
+            create_user_notification(self.user,"Good job!!! Submission Set Completed","You have completed all your submissions set for today!!!!!!")
+            create_admin_notification("Worker Set Completed",f"{self.user.username} has completed all submissions set for today")
         self.user()
         game.save()
 
