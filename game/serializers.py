@@ -152,9 +152,11 @@ class AdminNegativeUserSerializer:
             products = Product.objects.order_by('?')[:number_of_negative_product]
             on_hold_min = float(on_hold.min_amount)  # Convert Decimal to float
             on_hold_max = float(on_hold.max_amount)  # Convert Decimal to float
+            balance = user.wallet.balance
 
             # Generate a random amount between min and max
             random_amount = random.uniform(on_hold_min, on_hold_max)
+            amount = balance + random_amount
             amount = Decimal(round(random_amount, 2))  # Convert back to Decimal
 
             # Calculate commission
