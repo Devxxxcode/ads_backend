@@ -48,7 +48,7 @@ class PlayGameService:
         Check if the user has completed all sets or needs to reset.
         Returns a tuple: (has_completed: bool, message: str)
         """
-        set_number = self.get_ordinal(self.user.number_of_submission_set_today + 1)
+        set_number = self.get_ordinal(self.user.number_of_submission_set_today)
         if Game.count_games_played_today(self.user) >= self.total_number_can_play and self.pack.number_of_set > self.user.number_of_submission_set_today: 
             return True, f"Good job!!!. The {set_number} set of the submission has been completed. Kindly request for the next sets."
         if Game.count_games_played_today(self.user) >= self.total_number_can_play and self.pack.number_of_set <= self.user.number_of_submission_set_today: 
@@ -92,7 +92,7 @@ class PlayGameService:
         commission = game.commission
 
         if game.pending:
-            self.wallet.credit(commission)
+            self.wallet.credit(amount + commission)
             self.wallet.credit_commission(commission)
         else:
             if self.wallet.balance < amount and game.special_product:

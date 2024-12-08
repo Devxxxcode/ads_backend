@@ -6,6 +6,7 @@ from users.models import Invitation
 # from users.serializers import UserPartialSerilzer
 from shared.helpers import create_user_notification
 from django.contrib.auth import get_user_model
+from decimal import Decimal
 
 User = get_user_model()
 
@@ -157,7 +158,7 @@ class DepositSerializer:
                     user,"Deposit Update",f"Your deposit of {amount} USD has been Rejected. New Balance is {user.wallet.balance} USD"
                 )
 
-        def handle_referral_bonus(self,user, amount):
+        def handle_referral_bonus(self, user, amount):
             """
             Check if the user has an associated invitation and award the referral bonus if applicable.
             """
@@ -167,8 +168,8 @@ class DepositSerializer:
                 if not invitation.received_bonus:
                     # Retrieve settings to calculate the bonus percentage
                     settings = get_settings()
-                    bonus_percentage = settings.percentage_of_sponsors
-                    bonus_amount = amount * (bonus_percentage / 100)
+                    bonus_percentage = Decimal(settings.percentage_of_sponsors)  # Ensure it's Decimal
+                    bonus_amount = amount * (bonus_percentage / Decimal(100))  # Use Decimal for calculation
 
                     # Award the referral bonus to the referrer
                     referral = invitation.referral
@@ -178,7 +179,11 @@ class DepositSerializer:
                     # Mark the bonus as received
                     invitation.received_bonus = True
                     invitation.save()
-                    create_user_notification(referral,"Referral Bonus",f"You have recieved a referral bonus of {bonus_amount:.2f}, Your current balance is {referral.wallet.balance}")
+                    create_user_notification(
+                        referral,
+                        "Referral Bonus",
+                        f"You have received a referral bonus of {bonus_amount:.2f}. Your current balance is {referral.wallet.balance}"
+                    )
                     print(f"Referral bonus of {bonus_amount:.2f} awarded to user {referral.username} (ID: {referral.id}).")
             except Invitation.DoesNotExist:
                 # Handle case where no invitation is found
