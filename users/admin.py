@@ -28,6 +28,7 @@ class UserAdmin(BaseUserAdmin):
         (_("Personal Info"), {"fields": ("first_name", "last_name", "phone_number", "gender", "transactional_password",)}),
         (_("Permissions"), {"fields": ("is_staff", "is_active", "is_superuser", "groups", "user_permissions","is_min_balance_for_submission_removed","is_reg_balance_add")}),
         (_("Important Dates"), {"fields": ("last_login", "date_joined","last_connection")}),
+        (_("Submission Details"), {"fields": ("number_of_submission_today", "today_profit", "number_of_submission_set_today")}),
     )
 
     # Make `date_joined` readonly
