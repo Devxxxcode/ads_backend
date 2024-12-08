@@ -67,9 +67,7 @@ class Wallet(models.Model):
         """
         Add funds to the wallet balance.
         """
-        if amount < 0:
-            raise ValueError("Credit amount must be positive.")
-        
+        balance_amount = amount
         if self.on_hold < 0: 
             if amount + self.on_hold >= 0:
                 amount += self.on_hold 
@@ -78,7 +76,7 @@ class Wallet(models.Model):
                 self.on_hold += amount  
                 amount = 0 
 
-        self.balance += amount
+        self.balance += balance_amount
         self.save()
 
     def credit_commission(self, amount):
