@@ -68,6 +68,11 @@ class GameSerializer:
         rating_score = serializers.IntegerField(required=True)
         comment = serializers.CharField(required=False, allow_blank=True)
 
+        def validate_rating_score(self, value):
+            if not 1 <= value <= 5:
+                raise serializers.ValidationError("Rating score must be between 1 and 5.")
+            return value
+
 
     class Retrieve(serializers.ModelSerializer):
         """
