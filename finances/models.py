@@ -34,6 +34,9 @@ class Deposit(models.Model):
     def __str__(self):
         return f"Deposit by {self.user.username} - {self.amount} USD - {self.status}"
 
+    class Meta:
+        ordering = ['-created_at']
+
 
 
 class PaymentMethod(models.Model):
@@ -103,6 +106,9 @@ class Withdrawal(models.Model):
 
     def __str__(self):
         return f"Withdrawal by {self.user.username} - {self.amount} USD - {self.status}"
+
+    class Meta:
+        ordering = ['-created_at']
 
     def save(self, *args, **kwargs):
         """
