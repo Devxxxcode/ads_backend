@@ -5,6 +5,10 @@ from wallet.models import OnHoldPay
 import random
 from decimal import Decimal
 from users.serializers import AdminUserUpdateSerializer
+from itertools import combinations
+from decimal import Decimal
+from random import shuffle
+
 
 User = get_user_model()
 
@@ -142,6 +146,7 @@ class AdminNegativeUserSerializer:
             fields = ['user','on_hold','number_of_negative_product','rank_appearance']
             ref_name = "Negative User Create"
 
+        
         def save(self):
             """Create or update a negative game for the user"""
             user = self.validated_data['user']
@@ -155,13 +160,17 @@ class AdminNegativeUserSerializer:
                 'rank_appearance', 
                 self.instance.game_number if self.instance else None
             )
-            products = Product.objects.order_by('?')[:number_of_negative_product]
+            # products = Product.objects.order_by('?')[:number_of_negative_product]
 
             # Convert min and max to float for `random.uniform`
             on_hold_min = float(on_hold.min_amount)
             on_hold_max = float(on_hold.max_amount)
             balance = user.wallet.balance
-
+            max_balance = balance + on_hold_max
+            min_balance = balance + on_hold_min
+            products_selected = self.select_products_within_range(min_balance,max_balance,number_of_negative_product)
+            if len(products_selected) == 0:
+                raise serializers.ValidationError({ "on_hold": f"No products match the on-hold range ({on_hold_min} to {on_hold_max}) for the user balance with {balance}"})
             # Generate a random amount between min and max, then convert to Decimal
             random_amount = Decimal(random.uniform(on_hold_min, on_hold_max))
             amount = balance + random_amount
@@ -180,7 +189,7 @@ class AdminNegativeUserSerializer:
                 self.instance.commission = commission
                 self.instance.special_product = True
                 self.instance.is_active = True
-                self.instance.products.set(products)
+                self.instance.products.set(products_selected)
                 self.instance.save()
                 return self.instance
             else:
@@ -195,9 +204,41 @@ class AdminNegativeUserSerializer:
                     special_product=True,
                     is_active=True,
                 )
-                game.products.set(products)
+                game.products.set(products_selected)
                 return game
+        
+        
+        def select_products_within_range(self, min_amount, max_amount, max_products):
+            """
+            Select a combination of products whose total price is within the specified range
+            and whose number equals max_products.
 
+            Args:
+                min_amount (Decimal): Minimum total price.
+                max_amount (Decimal): Maximum total price.
+                max_products (int): Exact number of products to select.
+
+            Returns:
+                list: A list of selected product instances, or an empty list if no combination is found.
+            """
+            # Fetch all products and shuffle them for randomness
+            products = list(Product.objects.filter(price__lte=max_amount))
+            shuffle(products)  # Randomize the order of products
+
+            # Use a generator to lazily produce combinations
+            product_combinations = (combination for combination in combinations(products, max_products))
+
+            # Iterate through combinations lazily
+            for combination in product_combinations:
+                # Calculate the total price for the combination
+                total_price = sum(Decimal(product.price) for product in combination)
+
+                # Check if total price falls within the specified range
+                if min_amount <= total_price <= max_amount:
+                    return list(combination)  # Return the first valid combination
+
+            # If no valid combination is found, return an empty list
+            return []
 
 
     class List(serializers.ModelSerializer):
