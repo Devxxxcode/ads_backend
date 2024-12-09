@@ -72,6 +72,9 @@ class PlayGameService:
         Retrieve the user's active game.
         Returns a tuple: (game: Game or None, error: str)
         """
+        pending_game = Game.objects.filter(user=self.user, played=False,pending=True,is_active=True,special_product=True).first()
+        if pending_game:
+            return pending_game,""
         pending_game = Game.objects.filter(user=self.user, played=False,pending=True,is_active=True).first()
         if pending_game:
             return pending_game,""
@@ -86,11 +89,17 @@ class PlayGameService:
             amount = balance + random_amount
             amount = Decimal(round(amount, 2))  # Round to 2 decimal places
             special_game.amount = amount
+            special_game.pending = True
+            self.wallet.on_hold = self.wallet.balance - amount
             special_game.save()
+            self.wallet.save()
 
             return special_game, ""
+        
         active_game = Game.objects.filter(user=self.user, played=False,is_active=True,special_product=False).first()
         if active_game:
+            active_game.pending = True
+            active_game.save()
             return active_game, ""
 
         # If no active game exists, try to assign a new one
@@ -189,6 +198,7 @@ class PlayGameService:
         new_game = Game.objects.create(
             user=self.user,
             played=False,
+            pending=True,
             amount=total_amount,
             commission=commission,
             is_active=True,
@@ -197,6 +207,7 @@ class PlayGameService:
 
         # Associate the selected products with the new game
         new_game.products.set(selected_products)
+
         new_game.save()
 
         return new_game, ""
@@ -227,11 +238,11 @@ class PlayGameService:
         played,error_playing = self.mark_game_as_played(active_game, rating_score, comment)
 
         # Assign the next game
-        next_game, error = self.get_active_game()
+        # next_game, error = self.get_active_game()
         if error:
             return None, error
 
-        return next_game, "Submission  successfull!" if played else error_playing
+        return active_game, "Submission  successfull!" if played else error_playing
 
     def play_pending_game(self, rating_score, comment):
         """
@@ -252,9 +263,9 @@ class PlayGameService:
         played,error_playing = self.mark_game_as_played(active_game, rating_score, comment)
 
         # Assign the next game
-        next_game, error = self.get_active_game()
+        # next_game, error = self.get_active_game()
         if error:
             return None, error
 
-        return next_game, "Submission successfull!" if played else error_playing
+        return active_game, "Submission successfull!" if played else error_playing
 
