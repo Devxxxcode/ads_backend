@@ -137,11 +137,24 @@ class UserLoginSerializer(BaseAuthSerializer, serializers.ModelSerializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     wallet = WalletSerializer.UserWalletSerializer(read_only=True) 
     settings = serializers.SerializerMethodField(read_only=True)
+    total_number_can_play = serializers.SerializerMethodField()
+    current_number_count = serializers.SerializerMethodField()
     class Meta:
         model = User
-        fields = ['id','username','email','phone_number','first_name','last_name','gender','referral_code','profile_picture','last_connection','is_active','date_joined','wallet','settings','today_profit']
+        fields = ['id','username','email','phone_number','first_name','last_name','gender','referral_code','profile_picture','last_connection','is_active','date_joined','wallet','settings','today_profit','total_number_can_play','current_number_count']
         read_only_fields = ['date_joined','referral_code']
         ref_name = "UserProfileSerializer "
+
+    def get_total_number_can_play(self,obj):
+        wallet = getattr(obj, 'wallet', None)
+        if not wallet:
+            wallet = Wallet.objects.create(user=obj)
+
+        total_number_can_play = wallet.package.daily_missions  # Example: Maximum number of games per day
+        return total_number_can_play
+    
+    def get_current_number_count(self,obj):
+        return obj.number_of_submission_today
     
     def get_settings(self,obj):
         instance = get_settings()
