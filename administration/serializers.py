@@ -87,7 +87,7 @@ class DepositSerializer:
             model = Deposit
             fields = [
                 "status",
-                "transactional_password",
+                "admin_password",
             ]
             ref_name = "Deposit - UpdateStatus"
 
