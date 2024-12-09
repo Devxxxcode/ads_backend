@@ -81,7 +81,7 @@ class DepositSerializer:
         """
         Serializer for updating the status of a deposit.
         """
-        transactional_password = serializers.CharField(write_only=True)
+        admin_password = serializers.CharField(write_only=True,required=True)
 
         class Meta:
             model = Deposit
@@ -91,13 +91,15 @@ class DepositSerializer:
             ]
             ref_name = "Deposit - UpdateStatus"
 
-        def validate_transactional_password(self, value):
+        def validate_admin_password(self, value):
             """
             Validate the transactional password from the user.
             """
             user = self.context.get("request").user
-            if user.transactional_password != value:
-                raise serializers.ValidationError("Invalid transactional password.")
+            if not user.check_transactional_password(value):
+                raise serializers.ValidationError("Incorrect admin password.")
+            if not user.is_staff:
+                raise serializers.ValidationError("User does not have permission to perform this action.")
             return value
 
         def validate_status(self, value):
