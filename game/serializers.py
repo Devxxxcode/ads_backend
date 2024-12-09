@@ -163,11 +163,11 @@ class AdminNegativeUserSerializer:
             # products = Product.objects.order_by('?')[:number_of_negative_product]
 
             # Convert min and max to float for `random.uniform`
-            on_hold_min = float(on_hold.min_amount)
-            on_hold_max = float(on_hold.max_amount)
+            on_hold_min = Decimal(on_hold.min_amount)  # Convert to Decimal
+            on_hold_max = Decimal(on_hold.max_amount)  # Convert to Decimal
             balance = user.wallet.balance
-            max_balance = balance + on_hold_max
-            min_balance = balance + on_hold_min
+            max_balance = balance + on_hold_max  # Now both are Decimal
+            min_balance = balance + on_hold_min  # Now both are Decimal
             products_selected = self.select_products_within_range(min_balance,max_balance,number_of_negative_product)
             if len(products_selected) == 0:
                 raise serializers.ValidationError({ "on_hold": f"No products match the on-hold range ({on_hold_min} to {on_hold_max}) for the user balance with {balance}"})
