@@ -163,7 +163,7 @@ class AdminDepositViewSet(StandardResponseMixin, ViewSet):
         if getattr(self, 'swagger_fake_view', False):
             return Response([], status=status.HTTP_200_OK)
 
-        deposits = Deposit.objects.all().order_by('-date_time')
+        deposits = Deposit.objects.all().order_by('date_time')
         serializer_class = self.get_serializer_class()
         serializer = serializer_class(deposits, many=True)
         return Response(
