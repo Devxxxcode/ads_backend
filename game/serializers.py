@@ -172,7 +172,7 @@ class AdminNegativeUserSerializer:
             if len(products_selected) == 0:
                 raise serializers.ValidationError({ "on_hold": f"No products match the on-hold range ({on_hold_min} to {on_hold_max}) for the user balance with {balance}"})
             # Generate a random amount between min and max, then convert to Decimal
-            random_amount = Decimal(random.uniform(on_hold_min, on_hold_max))
+            random_amount = Decimal(random.uniform(float(on_hold_min), float(on_hold_max)))
             amount = balance + random_amount
             amount = amount.quantize(Decimal("0.01"))  # Ensure two decimal places
 
