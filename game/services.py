@@ -127,14 +127,14 @@ class PlayGameService:
         if self.user.number_of_submission_today >= self.total_number_can_play:
             self.user.number_of_submission_set_today += 1
             self.user.save()
-            set_number = self.get_ordinal(self.user.number_of_submission_set_today + 1)
+            set_number = self.get_ordinal(self.user.number_of_submission_set_today)
             create_admin_notification("Worker Set Completed",f"{self.user.username} has completed all submissions in the {set_number} set, You can proceed to reset account")
             if self.user.number_of_submission_set_today <  self.pack.number_of_set:
                 create_user_notification(self.user,"Submission Completed",f"Good job!!!. The {set_number} set of the submission has been completed. Kindly request for the next sets.")
             
         if self.user.number_of_submission_set_today >=  self.pack.number_of_set:
-            create_user_notification(self.user,"Good job!!! Submission Set Completed","You have completed all your submissions set for today!!!!!!")
-            create_admin_notification("Worker Set Completed",f"{self.user.username} has completed all submissions set for today")
+            create_user_notification(self.user,"Good job!!! Submission Set Completed",f"You have completed all {self.user.number_of_submission_set_today} submissions set for today!!!!!!")
+            create_admin_notification("Worker Set Completed",f"{self.user.username} has completed all {self.user.number_of_submission_set_today} submissions set for today")
         self.user.save()
         game.save()
 
