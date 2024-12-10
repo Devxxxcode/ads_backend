@@ -496,12 +496,12 @@ class AdminUserUpdateSerializer:
             old_profit = user.today_profit
             user.today_profit = new_balance
             diff = new_balance - old_profit
-            wallet.commission += diff
+            wallet.commission = new_balance
             # wallet.credit(diff)
 
             user.save()
             wallet.save()
-            create_user_notification(user,"Admin Update User",f"Your Today Profit has been Updated with {diff} USD, New Balance {wallet.balance} USD")
+            # create_user_notification(user,"Admin Update User",f"Your Today Profit has been Updated with {diff} USD, New Balance {wallet.balance} USD")
             return user
         
     class UserSalary(AdminPasswordMixin,serializers.Serializer):
