@@ -3,6 +3,8 @@ from django.utils.timezone import now
 from django.utils.timezone import now, timedelta
 from administration.models import DailyResetTracker
 from django.contrib.auth import get_user_model
+from django.utils.timezone import now
+import pytz
 
 User = get_user_model()
 
@@ -52,30 +54,73 @@ class ConfigurableResetMiddleware:
         response = self.get_response(request)
         return response
 
+    # def check_and_reset_fields(self):
+    #     """
+    #     Check the last reset time and reset fields if the interval has passed.
+    #     """
+    #     # Get or create the tracker entry
+    #     tracker, created = DailyResetTracker.objects.get_or_create(id=1)  # Use a fixed ID for simplicity
+
+    #     # Calculate the reset interval in hours
+    #     reset_interval = timedelta(hours=float(tracker.reset_interval_hours))  # Convert to float
+
+    #     # Perform reset if the interval has passed
+    #     if now() >= tracker.last_reset_time + reset_interval:
+    #         self.perform_reset()
+    #         # Update the last reset time
+    #         tracker.last_reset_time = now()
+    #         tracker.save()
+
+
     def check_and_reset_fields(self):
-        """
-        Check the last reset time and reset fields if the interval has passed.
-        """
-        # Get or create the tracker entry
-        tracker, created = DailyResetTracker.objects.get_or_create(id=1)  # Use a fixed ID for simplicity
+        # Define Eastern Time timezone
+        eastern_time = pytz.timezone("US/Eastern")
 
-        # Calculate the reset interval in hours
-        reset_interval = timedelta(hours=float(tracker.reset_interval_hours))  # Convert to float
+        # Get or create tracker entry
+        tracker, created = DailyResetTracker.objects.get_or_create(id=1)
 
-        # Perform reset if the interval has passed
-        if now() >= tracker.last_reset_time + reset_interval:
+        # Calculate today's 12:00 AM in Eastern Time
+        today_midnight = now().astimezone(eastern_time).replace(hour=0, minute=0, second=0, microsecond=0)
+
+        # Convert today's midnight to UTC
+        today_midnight_utc = today_midnight.astimezone(pytz.UTC)
+
+        # Perform reset if last reset time is earlier than today's midnight
+        if tracker.last_reset_time < today_midnight_utc:
             self.perform_reset()
-            # Update the last reset time
-            tracker.last_reset_time = now()
+            # Update the last reset time to today's midnight in UTC
+            tracker.last_reset_time = today_midnight_utc
             tracker.save()
+
 
     def perform_reset(self):
         """
         Reset user fields to their default values.
         """
-        User.objects.update(
-            number_of_submission_today=0,
-            today_profit=0.00,
-            number_of_submission_set_today=0
-        )
-        print("User fields reset successfully.")
+        try:
+            users_with_pending_games = User.objects.filter(
+                games__played=False, games__pending=True, games__is_active=True, games__special_product=True
+            ).distinct()
+
+            # Reset wallet salary for users with pending games
+            for user in users_with_pending_games:
+                if hasattr(user, "wallet"):
+                    user.wallet.salary = 0
+                    user.wallet.save()
+
+            # Reset other users' fields in bulk
+            other_users = User.objects.exclude(id__in=users_with_pending_games)
+            other_users.update(
+                number_of_submission_today=0,
+                today_profit=0.00,
+                number_of_submission_set_today=0
+            )
+            for user in other_users:
+                if hasattr(user, "wallet"):
+                    user.wallet.salary = 0
+                    user.wallet.save()
+
+            print("User fields reset successfully.")
+        except Exception as e:
+            print(f"Error in perform_reset: {e}")
+
