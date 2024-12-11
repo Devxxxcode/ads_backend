@@ -496,7 +496,7 @@ class AdminUserUpdateSerializer:
             old_profit = user.today_profit
             user.today_profit = new_balance
             diff = new_balance - old_profit
-            wallet.commission = new_balance
+            wallet.commission = diff
             # wallet.credit(diff)
 
             user.save()

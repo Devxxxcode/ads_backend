@@ -12,3 +12,4 @@ cloudinary
 django-cloudinary-storage
 django-cloudinary-storage[video]
 gunicorn
+pytz
