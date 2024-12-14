@@ -225,7 +225,7 @@ class PlayGameService:
         
         if active_game.pending:
             # Check if the user is eligible to play
-            can_play, message = self.check_can_user_play_pending_game()
+            can_play, message = self.check_can_user_play()
             if not can_play:
                 return None, message
         else:
