@@ -133,6 +133,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
     number_of_submission_today =  models.IntegerField(null=True,blank=True,verbose_name="the total number of submission done today",default=0)
+    current_referral_bonus = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        default=0.00,
+        verbose_name="The current referral bonus earned by user beefore notifcation"
+    )
     today_profit =  models.DecimalField(
         max_digits=12,
         decimal_places=2,

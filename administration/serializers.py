@@ -141,7 +141,7 @@ class DepositSerializer:
                 # Increment wallet balance when status changes to Confirmed
                 user.wallet.credit(amount)
                 user.wallet.save()
-                self.handle_referral_bonus(user,amount)
+                # self.handle_referral_bonus(user,amount)
                 create_user_notification(
                     user,"Deposit Update",f"Your deposit of {amount} USD has validated. New Balance is {user.wallet.balance} USD"
                 )

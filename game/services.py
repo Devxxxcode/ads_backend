@@ -1,6 +1,8 @@
 from django.utils.timezone import now, timedelta
 from .models import Game, Product,generate_unique_rating_no
 import random
+from django.db import transaction
+from users.models import Invitation
 from decimal import Decimal
 from shared.helpers import get_settings,create_admin_notification,create_user_notification
 
@@ -133,6 +135,8 @@ class PlayGameService:
         self.user.number_of_submission_today +=1
         self.user.today_profit +=commission
         self.user.save()
+        self.handle_referral_bonus(commission)
+
         if self.user.number_of_submission_today >= self.total_number_can_play:
             self.user.number_of_submission_set_today += 1
             self.user.save()
@@ -148,7 +152,45 @@ class PlayGameService:
         game.save()
 
         return True, ""
+    
+    def handle_referral_bonus(self,commission_amount):
+        """
+        Give the user that referred the user a bonus balance
+        """
+        try:
+            user = self.user
+            invitation = getattr(user, "invitation", None)
+            if not invitation:
+                # print(f"No invitation found for user {user.username}.")
+                return
+            settings = self.settings
+            bonus_percentage = Decimal(settings.percentage_of_sponsors)  # Ensure it's Decimal
+            bonus_amount = commission_amount * (bonus_percentage / Decimal(100))  # Use Decimal for calculation
+            referral = invitation.referral
+            if not hasattr(referral, "wallet") or not referral.wallet:
+                print(f"Referrer {referral.username} does not have a wallet.")
+                return
+            
+            with transaction.atomic():
+                referral.wallet.balance += bonus_amount
+                referral.current_referral_bonus += bonus_amount
+                referral.wallet.save()
+                referral.save()
 
+                if referral.current_referral_bonus >= Decimal(10):
+                    referral.current_referral_bonus -= Decimal(10)
+                    referral.save()
+                    create_user_notification(
+                    referral,
+                    "Referral Bonus",
+                    "You have received a total of 10 USD for referral bonus!!!!"
+                    )
+        except Invitation.DoesNotExist:
+            print(f"No invitation found for user {user.username}.")
+        except Exception as e:
+            # Catch unexpected errors
+            print(f"An error occurred while processing referral bonus: {str(e)}")
+        
 
     def assign_next_game(self):
         """
