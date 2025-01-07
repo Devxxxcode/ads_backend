@@ -82,9 +82,9 @@ class WithdrawalSerializer:
             if not can_withdraw:
                 raise serializers.ValidationError({"error":error})
             
-            user_wallet = user.wallet
-            if user_wallet:
-                user_wallet.debit(data['amount'])
+            # user_wallet = user.wallet
+            # if user_wallet:
+            #     user_wallet.debit(data['amount'])
 
             data.pop("password","")
             return data

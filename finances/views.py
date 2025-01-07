@@ -236,7 +236,7 @@ class WithdrawalViewSet(StandardResponseMixin, ViewSet):
 
         # Create the withdrawal record
         Withdrawal.objects.create(user=request.user, amount=amount, payment_method=payment_method)
-        message = f"You made a withdrawal request of  {serializer.validated_data['amount']} USD, New Balance : {request.user.wallet.balance} USD"
+        message = f"You made a withdrawal request of  {serializer.validated_data['amount']} USD"
         create_user_notification(
             user=request.user,
             title="Withdrawal",

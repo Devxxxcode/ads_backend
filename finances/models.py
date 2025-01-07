@@ -133,12 +133,12 @@ class Withdrawal(models.Model):
             return False, f"Insufficient balance, You balance is {balance}"
         if number_of_play < total_play:
             return False, (
-                f"Complete all {total_play} submission{'s' if total_play > 1 else ''} "
+                f"All {total_play} submission{'s' if total_play > 1 else ''} must be completed"
                 f"before you are able to withdraw."
             )
         if user.number_of_submission_set_today < pack.number_of_set:
             return False, (
-                f"Complete all {pack.number_of_set} submission{'s' if pack.number_of_set > 1 else ''} set"
+                f"All {pack.number_of_set} submission{'s' if pack.number_of_set > 1 else ''} set must be completed"
                 f"before you are able to withdraw."
             )
         total_withdrawal_for_today = cls.total_count_of_today_withdrawal(user)
@@ -151,7 +151,7 @@ class Withdrawal(models.Model):
         if total_withdrawal_for_today >= max_no_of_withdrawal:
             return False, f"You have reached the maximum number of withdrawal for today"
         if not user.check_transactional_password(transactional_password):
-            return False, "Incorrecct transactional password"
+            return False, "Incorrect transactional password"
         return True,""
 
     

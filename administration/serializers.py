@@ -288,6 +288,8 @@ class WithdrawalSerializer:
                 # create_user_notification(
                 #     user,"Withdrawal Update",f"Your Withdrawal of {amount} USD has been Processed."
                 # )
+                user.wallet.balance -= amount
+                user.wallet.save()
 
             elif old_status == "Processed" and new_status != "Processed":
                 # Increment wallet balance when status changes from Processed (rollback)
@@ -308,7 +310,7 @@ class WithdrawalSerializer:
                     f"Your current balance is now {user.wallet.balance:.2f} USD."
                 )
             elif new_status == "Processed":
-                message = f"Your withdrawal request of {amount:.2f} USD has been processed successfully."
+                message = f"Your withdrawal request of {amount:.2f} USD has been processed successfully. Your current balance is now {user.wallet.balance:.2f} USD."
             elif new_status == "Pending":
                 message = f"Your withdrawal request of {amount:.2f} USD is pending."
             else:
