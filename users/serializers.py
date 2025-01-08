@@ -317,15 +317,15 @@ class DashboardSerializer(serializers.Serializer):
             count=Count('id')  # Count users for each month
         ).order_by('month')
 
-        # Initialize all months up to the current month with 0
-        result = {month: 0 for month in range(1, current_month + 1)}
+        # Initialize all months with 0
+        result = {month: 0 for month in range(1, 13)}
 
-        # Update the result with actual counts
+        # Update result with actual counts
         for reg in registrations:
-            if reg['month'] <= current_month:  # Ensure only months up to the current month are included
-                result[reg['month']] = reg['count']
+            result[reg['month']] = reg['count']
 
         return result
+        
         
     def get_total_submissions_per_month(self, obj):
         """
