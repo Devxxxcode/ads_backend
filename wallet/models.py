@@ -138,24 +138,24 @@ class Wallet(models.Model):
         """
         Override save method to assign a Pack based on the wallet balance.
         """
-        update_pack = Game.user_has_pending_game(self.user)
+        # update_pack = Game.user_has_pending_game(self.user)
         # Fetch all active packs ordered by their USD value in descending order
-        if not update_pack:
-            packs = Pack.objects.filter(is_active=True).order_by('-usd_value')
+        # if not update_pack:
+        packs = Pack.objects.filter(is_active=True).order_by('-usd_value')
 
-            # Attempt to assign the highest suitable pack
-            assigned_pack = None
-            for pack in packs:
-                if self.balance >= pack.usd_value:
-                    assigned_pack = pack
-                    break
+        # Attempt to assign the highest suitable pack
+        assigned_pack = None
+        for pack in packs:
+            if self.balance >= pack.usd_value:
+                assigned_pack = pack
+                break
 
-            # Fall back to the pack with the lowest value if no suitable pack was found
-            if not assigned_pack:
-                assigned_pack = Pack.objects.filter(is_active=True).order_by('usd_value').first()
+        # Fall back to the pack with the lowest value if no suitable pack was found
+        if not assigned_pack:
+            assigned_pack = Pack.objects.filter(is_active=True).order_by('usd_value').first()
 
-            # Assign the selected pack to the instance
-            self.package = assigned_pack
+        # Assign the selected pack to the instance
+        self.package = assigned_pack
 
         # Call the parent save method
         super().save(*args, **kwargs)
