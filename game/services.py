@@ -146,8 +146,9 @@ class PlayGameService:
                 create_user_notification(self.user,"Submission Completed",f"Good job!!!. The {set_number} set of the submission has been completed. Kindly request for the next sets.")
             
         if self.user.number_of_submission_set_today >=  self.pack.number_of_set:
-            create_user_notification(self.user,"Good job!!! Submission Set Completed",f"You have completed all {self.user.number_of_submission_set_today} submissions set for today!!!!!!")
-            create_admin_notification("Worker Set Completed",f"{self.user.username} has completed all {self.user.number_of_submission_set_today} submissions set for today")
+            pass
+            # create_user_notification(self.user,"Good job!!! Submission Set Completed",f"You have completed all {self.user.number_of_submission_set_today} submissions set for today!!!!!!")
+            # create_admin_notification("Worker Set Completed",f"{self.user.username} has completed all {self.user.number_of_submission_set_today} submissions set for today")
         self.user.save()
         game.save()
 
