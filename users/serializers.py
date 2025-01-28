@@ -624,6 +624,8 @@ class AdminUserUpdateSerializer:
             Reset User Account
             """
             user = self.validated_data['user']
+            if user.number_of_submission_set_today >=  user.wallet.package.number_of_set:
+                user.number_of_submission_set_today = 0
             user.number_of_submission_today = 0
             # user.number_of_submission_set_today = 0
             # user.today_profit = 0
