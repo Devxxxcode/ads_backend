@@ -138,7 +138,7 @@ class Wallet(models.Model):
         """
         Override save method to assign a Pack based on the wallet balance.
         """
-        # update_pack = Game.user_has_pending_game(self.user)
+        update_pack = Game.user_has_pending_game(self.user)
         # Fetch all active packs ordered by their USD value in descending order
         # if not update_pack:
         packs = Pack.objects.filter(is_active=True).order_by('-usd_value')
