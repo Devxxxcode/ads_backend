@@ -5,6 +5,7 @@ from administration.models import DailyResetTracker
 from django.contrib.auth import get_user_model
 from django.utils.timezone import now
 import pytz
+import random
 
 User = get_user_model()
 
@@ -23,6 +24,20 @@ class UpdateLastConnectionMiddleware:
             request.user.last_connection = now()
             request.user.save(update_fields=['last_connection'])
 
+        response = self.get_response(request)
+        return response
+    
+import time
+
+class SlowDownMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        wait_time = random.randint(5, 10)
+        print(f"Waiting for {wait_time} seconds...")
+        time.sleep(wait_time)
+        print(f"Wait completed")
         response = self.get_response(request)
         return response
 
