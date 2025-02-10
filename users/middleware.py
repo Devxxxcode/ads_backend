@@ -118,6 +118,9 @@ class ConfigurableResetMiddleware:
             ).distinct()
 
             # Reset wallet salary for users with pending games
+            users_with_pending_games.update(
+                number_of_submission_set_today=0
+            )
             for user in users_with_pending_games:
                 if hasattr(user, "wallet"):
                     user.wallet.salary = 0
