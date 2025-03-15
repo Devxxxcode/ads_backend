@@ -248,6 +248,34 @@ class InvitationCodeSerializer(serializers.ModelSerializer):
 
 
 
+class UserProfileListSerializer(serializers.ModelSerializer):
+    wallet = WalletSerializer.UserWalletSerializer(read_only=True) 
+    total_play = serializers.SerializerMethodField(read_only=True)
+    total_available_play = serializers.SerializerMethodField(read_only=True)
+    total_product_submitted = serializers.SerializerMethodField(read_only=True)
+    total_negative_product_submitted = serializers.SerializerMethodField(read_only=True)
+    class Meta:
+        model = User
+        fields = ['id','username','email','phone_number','first_name','last_name','gender','referral_code','profile_picture','last_connection','is_active','date_joined','wallet','total_play','total_available_play','total_product_submitted','total_negative_product_submitted','is_min_balance_for_submission_removed','is_reg_balance_add','number_of_submission_set_today','today_profit']
+        read_only_fields = ['date_joined','referral_code',]
+
+    def get_total_play(self,obj):
+        return Game.count_games_played_today(obj)
+
+    def get_total_available_play(self,obj):
+        try:
+            wallet = obj.wallet
+            return wallet.package.daily_missions
+        except Wallet.DoesNotExist:
+            return None
+
+    def get_total_negative_product_submitted(self,obj):
+        return Game.objects.filter(user=obj,special_product=True,played=True,is_active=True).count()
+
+    def get_total_product_submitted(self,obj):
+        return Game.objects.filter(user=obj,played=True,is_active=True).count()
+
+
 # ----------------------------------- Admin Serializers -----------------------------------------
 
 class DashboardSerializer(serializers.Serializer):
@@ -293,10 +321,15 @@ class DashboardSerializer(serializers.Serializer):
         end_of_today = start_of_today + timedelta(days=1)
 
         # Filter users whose last_connection is within today's range
-        return User.objects.users().filter(
+        users_today = User.objects.filter(
             last_connection__gte=start_of_today,
             last_connection__lt=end_of_today,
-        ).count()
+        ).order_by("-last_connection")  # Most recent first
+
+        return {
+            "count": users_today.count(),
+            "users": UserProfileListSerializer(users_today, many=True).data  # Serialize user list
+        }
 
     def get_user_registrations_per_month(self, obj):
         """
@@ -398,32 +431,6 @@ class AdminAuthSerializer:
             ref_name = "Admin User - List"
 
 
-class UserProfileListSerializer(serializers.ModelSerializer):
-    wallet = WalletSerializer.UserWalletSerializer(read_only=True) 
-    total_play = serializers.SerializerMethodField(read_only=True)
-    total_available_play = serializers.SerializerMethodField(read_only=True)
-    total_product_submitted = serializers.SerializerMethodField(read_only=True)
-    total_negative_product_submitted = serializers.SerializerMethodField(read_only=True)
-    class Meta:
-        model = User
-        fields = ['id','username','email','phone_number','first_name','last_name','gender','referral_code','profile_picture','last_connection','is_active','date_joined','wallet','total_play','total_available_play','total_product_submitted','total_negative_product_submitted','is_min_balance_for_submission_removed','is_reg_balance_add','number_of_submission_set_today','today_profit']
-        read_only_fields = ['date_joined','referral_code',]
-
-    def get_total_play(self,obj):
-        return Game.count_games_played_today(obj)
-
-    def get_total_available_play(self,obj):
-        try:
-            wallet = obj.wallet
-            return wallet.package.daily_missions
-        except Wallet.DoesNotExist:
-            return None
-
-    def get_total_negative_product_submitted(self,obj):
-        return Game.objects.filter(user=obj,special_product=True,played=True,is_active=True).count()
-
-    def get_total_product_submitted(self,obj):
-        return Game.objects.filter(user=obj,played=True,is_active=True).count()
 
 class AdminUserUpdateSerializer:
 
