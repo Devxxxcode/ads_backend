@@ -22,78 +22,130 @@ def send_otp_email(email, otp_code):
     # Sanitize OTP code to prevent injection
     safe_otp = str(otp_code).strip()[:6]  # Ensure it's only 6 digits
     
-    subject = 'Email Verification - Adsterra!!!'
-    message = f"""
-Hello,
+    subject = 'Email Verification Code - Adsterra Opt'
+    message = f"""Dear User,
 
-Thank you for registering with Adsterra  ! Please use the following OTP code to verify your email address:
+Thank you for registering with Adsterra Opt. To complete your account verification, please use the following verification code:
 
-OTP Code: {safe_otp}
+Verification Code: {safe_otp}
 
-This code will expire in {settings.OTP_EXPIRY_MINUTES} minutes.
+This code will expire in {settings.OTP_EXPIRY_MINUTES} minutes for security purposes.
 
-If you didn't request this verification, please ignore this email.
+If you did not request this verification code, please ignore this email and do not share this code with anyone.
+
+For security reasons, never share your verification code with others.
 
 Best regards,
-Adsterra Team
-adsterra-opt.com
+Adsterra Opt Support Team
+Website: adsterra-opt.com
 """
     
     try:
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-            fail_silently=False,
-        )
-        logger.info(f"OTP email sent successfully to {email}")
-        return True
+        from django.core.mail import EmailMessage
+        import time
+        
+        # Retry logic for email sending
+        max_retries = 3
+        retry_delay = 2  # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                email_msg = EmailMessage(
+                    subject=subject,
+                    body=message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[email],
+                    headers={
+                        'X-Mailer': 'Adsterra Opt System',
+                        'X-Priority': '3',
+                        'X-MSMail-Priority': 'Normal',
+                        'Importance': 'Normal',
+                    }
+                )
+                email_msg.send(fail_silently=False)
+                logger.info(f"OTP email sent successfully to {email} (attempt {attempt + 1})")
+                return True
+                
+            except Exception as e:
+                logger.warning(f"OTP email attempt {attempt + 1} failed for {email}: {str(e)}")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    raise e
+                    
     except Exception as e:
-        logger.error(f"Failed to send OTP email to {email}: {str(e)}")
+        logger.error(f"Failed to send OTP email to {email} after {max_retries} attempts: {str(e)}")
         return False
 
 
 def send_welcome_email(email, username):
     """Send welcome email to newly registered user."""
-    subject = 'Welcome to Adsterra!!! 🎉'
-    message = f"""
-Hello {username},
+    subject = 'Welcome to Adsterra Opt - Account Created Successfully'
+    message = f"""Dear {username},
 
-Welcome to Adsterra !!! 🎉
+Welcome to Adsterra Opt! Your account has been successfully created and verified.
 
-Your account has been successfully created and you can now start using our platform.
-
-Here are your account details:
+Account Information:
 - Username: {username}
-- Email: {email}
+- Email Address: {email}
 
-You can now:
-✅ Access your dashboard
-✅ Start earning with our platform
-✅ Explore all available features
+Your account is now active and you can:
 
-If you have any questions or need assistance, please don't hesitate to contact our support team.
+1. Access your personal dashboard
+2. Start using our platform features
+3. Explore available opportunities
+4. Manage your account settings
 
-Thank you for joining us!
+If you have any questions or need assistance, please contact our support team.
+
+Thank you for choosing Adsterra Opt!
 
 Best regards,
-Adsterra Opt Team
-adsterra-opt.com
+Adsterra Opt Support Team
+Website: adsterra-opt.com
 """
     
     try:
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-            fail_silently=False,
-        )
-        logger.info(f"Welcome email sent successfully to {email} for user {username}")
-        return True
+        from django.core.mail import EmailMessage
+        import time
+        import socket
+        
+        # Retry logic for email sending with shorter timeouts for welcome emails
+        max_retries = 2  # Fewer retries for welcome emails
+        retry_delay = 1  # Shorter delay
+        
+        for attempt in range(max_retries):
+            try:
+                email_msg = EmailMessage(
+                    subject=subject,
+                    body=message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[email],
+                    headers={
+                        'X-Mailer': 'Adsterra Opt System',
+                        'X-Priority': '3',
+                        'X-MSMail-Priority': 'Normal',
+                        'Importance': 'Normal',
+                    }
+                )
+                
+                # Set shorter timeout for welcome emails
+                email_msg.timeout = 15  # 15 seconds timeout
+                email_msg.send(fail_silently=False)
+                logger.info(f"Welcome email sent successfully to {email} for user {username} (attempt {attempt + 1})")
+                return True
+                
+            except (socket.timeout, Exception) as e:
+                logger.warning(f"Welcome email attempt {attempt + 1} failed for {email}: {str(e)}")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    raise e
+                    
     except Exception as e:
-        logger.error(f"Failed to send welcome email to {email}: {str(e)}")
+        logger.error(f"Failed to send welcome email to {email} after {max_retries} attempts: {str(e)}")
         return False
 
 
@@ -115,6 +167,8 @@ def check_rate_limit(email, action='send_otp'):
 
 def create_or_update_otp(email):
     """Create or update OTP for email verification."""
+    logger.info(f"Creating/updating OTP for {email}")
+    
     # Check rate limit
     can_proceed, message = check_rate_limit(email, 'send_otp')
     if not can_proceed:
@@ -125,29 +179,38 @@ def create_or_update_otp(email):
     cleanup_expired_otps()
     
     # Delete any existing OTP for this email
-    EmailOTP.objects.filter(email=email).delete()
+    existing_otps = EmailOTP.objects.filter(email=email)
+    if existing_otps.exists():
+        logger.info(f"Deleting {existing_otps.count()} existing OTP(s) for {email}")
+        existing_otps.delete()
     
     # Generate new OTP
     otp_code = generate_otp_code()
     expires_at = timezone.now() + timedelta(minutes=settings.OTP_EXPIRY_MINUTES)
     
     # Create new OTP record
-    otp_record = EmailOTP.objects.create(
-        email=email,
-        otp_code=otp_code,
-        expires_at=expires_at
-    )
+    try:
+        otp_record = EmailOTP.objects.create(
+            email=email,
+            otp_code=otp_code,
+            expires_at=expires_at
+        )
+        logger.info(f"OTP record created for {email}: {otp_code}")
+    except Exception as e:
+        logger.error(f"Failed to create OTP record for {email}: {str(e)}")
+        return None, "Failed to create OTP record. Please try again."
     
     # Send OTP via email
+    logger.info(f"Attempting to send OTP email to {email}")
     email_sent = send_otp_email(email, otp_code)
     
     if email_sent:
-        logger.info(f"OTP created and sent for {email}")
+        logger.info(f"OTP created and sent successfully for {email}")
         return otp_record, "OTP sent successfully"
     else:
         # If email failed to send, delete the OTP record
+        logger.error(f"Email sending failed for {email}, deleting OTP record")
         otp_record.delete()
-        logger.error(f"Failed to send OTP email for {email}")
         return None, "Failed to send OTP. Please try again."
 
 

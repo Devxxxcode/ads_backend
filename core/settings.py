@@ -374,6 +374,10 @@ EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'adsterra_income@adsterra-opt.com
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', 'VLsJb4etLN^]*;De')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'adsterra_income@adsterra-opt.com')
 
+# Email timeout settings
+EMAIL_TIMEOUT = 60  # 30 seconds timeout
+EMAIL_CONNECTION_TIMEOUT = 60  # 10 seconds connection timeout
+
 # OTP Settings
 OTP_EXPIRY_MINUTES = 10  # OTP expires in 10 minutes
 

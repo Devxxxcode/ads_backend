@@ -833,14 +833,30 @@ class UserSignupWithOTPSerializer(serializers.ModelSerializer):
             referrer.is_used = True
             referrer.save()
 
-        # Send welcome email to the new user
+        # Send welcome email to the new user (non-blocking)
         try:
-            send_welcome_email(email, user.username)
+            import threading
+            import logging
+            logger = logging.getLogger(__name__)
+            
+            def send_welcome_email_async():
+                try:
+                    send_welcome_email(email, user.username)
+                    logger.info(f"Welcome email sent successfully to {email} for user {user.username}")
+                except Exception as e:
+                    logger.warning(f"Failed to send welcome email to {email}: {str(e)}")
+            
+            # Send email in background thread to avoid blocking user creation
+            email_thread = threading.Thread(target=send_welcome_email_async)
+            email_thread.daemon = True
+            email_thread.start()
+            logger.info(f"Welcome email sending initiated for {email} in background thread")
+            
         except Exception as e:
             # Log the error but don't fail the user creation
             import logging
             logger = logging.getLogger(__name__)
-            logger.warning(f"Failed to send welcome email to {email}: {str(e)}")
+            logger.warning(f"Failed to initiate welcome email for {email}: {str(e)}")
 
         # Clean up the OTP record ONLY after everything is successfully completed
         try:
