@@ -11,7 +11,10 @@ from .serializers import (
     ChangePasswordSerializer,
     ChangeTransactionalPasswordSerializer,
     InvitationCodeSerializer,
-    AdminAuthSerializer
+    AdminAuthSerializer,
+    SendOTPSerializer,
+    VerifyOTPSerializer,
+    UserSignupWithOTPSerializer
 )
 from administration.serializers import SettingsSerializer
 from rest_framework.exceptions import NotFound
@@ -75,8 +78,8 @@ class UserAuthViewSet(ViewSet):
     @swagger_auto_schema(
         request_body=UserSignupSerializer,
         responses={201: UserSignupSerializer},
-        operation_summary="User Signup",
-        operation_description="Create a new user."
+        operation_summary="User Signup (Legacy)",
+        operation_description="Create a new user without OTP verification. Use signup_with_otp for new registrations."
     )
     @action(detail=False, methods=['post'])
     def signup(self, request):
@@ -86,6 +89,57 @@ class UserAuthViewSet(ViewSet):
         return Response(
             success=True,
             message="User created successfully.",
+            status_code=status.HTTP_201_CREATED,
+            data=serializer.data
+        )
+
+    @swagger_auto_schema(
+        request_body=SendOTPSerializer,
+        responses={200: "OTP sent successfully."},
+        operation_summary="Send OTP for Email Verification",
+        operation_description="Send OTP code to user's email for verification during signup."
+    )
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    def send_otp(self, request):
+        serializer = SendOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        result = serializer.save()
+        return Response(
+            success=True,
+            message=result["message"],
+            status_code=status.HTTP_200_OK
+        )
+
+    @swagger_auto_schema(
+        request_body=VerifyOTPSerializer,
+        responses={200: "OTP verified successfully."},
+        operation_summary="Verify OTP Code",
+        operation_description="Verify the OTP code sent to user's email."
+    )
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    def verify_otp(self, request):
+        serializer = VerifyOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return Response(
+            success=True,
+            message="Email verified successfully. You can now complete your registration.",
+            status_code=status.HTTP_200_OK
+        )
+
+    @swagger_auto_schema(
+        request_body=UserSignupWithOTPSerializer,
+        responses={201: UserSignupWithOTPSerializer},
+        operation_summary="User Signup with OTP Verification",
+        operation_description="Create a new user with email OTP verification."
+    )
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    def signup_with_otp(self, request):
+        serializer = UserSignupWithOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(
+            success=True,
+            message="User created successfully. Email verified.",
             status_code=status.HTTP_201_CREATED,
             data=serializer.data
         )

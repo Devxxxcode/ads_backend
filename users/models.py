@@ -205,3 +205,23 @@ class InvitationCode(models.Model):
         if not self.invitation_code:
             self.invitation_code = generate_invitation_code()
         super().save(*args, **kwargs)
+
+
+class EmailOTP(models.Model):
+    """
+    Model to store email OTP for user verification during signup.
+    """
+    email = models.EmailField(unique=True)
+    otp_code = models.CharField(max_length=6)
+    is_verified = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    
+    def __str__(self):
+        return f"OTP for {self.email}"
+    
+    def is_expired(self):
+        from django.utils import timezone
+        # Add a small buffer (1 second) to account for time precision issues
+        now = timezone.now()
+        return now > self.expires_at

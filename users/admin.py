@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
-from .models import User
+from .models import User, EmailOTP
 from wallet.models import Wallet
 
 class WalletInline(admin.StackedInline):
@@ -53,6 +53,17 @@ class UserAdmin(BaseUserAdmin):
 
     # Inline wallet details
     inlines = [WalletInline]
+
+@admin.register(EmailOTP)
+class EmailOTPAdmin(admin.ModelAdmin):
+    """
+    Admin interface for EmailOTP model.
+    """
+    list_display = ('email', 'otp_code', 'is_verified', 'created_at', 'expires_at')
+    list_filter = ('is_verified', 'created_at')
+    search_fields = ('email',)
+    readonly_fields = ('created_at',)
+    ordering = ('-created_at',)
 
 # Register the custom User model and its admin
 admin.site.register(User, UserAdmin)
