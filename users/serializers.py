@@ -4,7 +4,7 @@ from rest_framework.exceptions import NotFound
 from rest_framework.exceptions import AuthenticationFailed
 from django.contrib.auth import get_user_model
 
-from .models import Invitation,InvitationCode
+from .models import Invitation,InvitationCode,EmailOTP
 from wallet.models import Wallet,OnHoldPay
 from wallet.serializers import WalletSerializer
 from administration.serializers import SettingsSerializer
@@ -19,6 +19,7 @@ from finances.models import PaymentMethod
 from finances.serializers import PaymentMethodSerializer
 import random
 from shared.helpers import create_user_notification
+from .email_utils import create_or_update_otp, verify_otp, send_welcome_email
 
 
 
@@ -663,6 +664,194 @@ class AdminUserUpdateSerializer:
             if not (0 <= value <= 100):
                 raise serializers.ValidationError({'credit_score':"Credit score must be between 0 and 100."})
             return value
+
+
+# ----------------------------------- OTP Serializers -----------------------------------------
+
+class SendOTPSerializer(serializers.Serializer):
+    """
+    Serializer for sending OTP to email during signup.
+    """
+    email = serializers.EmailField()
+    
+    def validate_email(self, value):
+        """
+        Validate email and check if user already exists.
+        """
+        email = value.lower()
+        if User.objects.filter(email=email).exists():
+            raise serializers.ValidationError("A user with this email already exists. Please try logging in instead.")
+        
+        # Check if there's a verified OTP without a user (abandoned registration)
+        verified_otp = EmailOTP.objects.filter(email=email, is_verified=True).first()
+        if verified_otp and not User.objects.filter(email=email).exists():
+            # Clean up the abandoned verified OTP and allow new registration
+            verified_otp.delete()
+        
+        return email
+    
+    def save(self):
+        """
+        Send OTP to the provided email.
+        """
+        email = self.validated_data['email']
+        otp_record, message = create_or_update_otp(email)
+        
+        if otp_record:
+            return {"message": message}
+        else:
+            raise serializers.ValidationError(message)
+
+
+class VerifyOTPSerializer(serializers.Serializer):
+    """
+    Serializer for verifying OTP during signup.
+    """
+    email = serializers.EmailField()
+    otp_code = serializers.CharField(max_length=6, min_length=6)
+    
+    def validate_otp_code(self, value):
+        """
+        Validate OTP code format.
+        """
+        if not value.isdigit():
+            raise serializers.ValidationError("OTP code must contain only digits.")
+        return value
+    
+    def validate(self, attrs):
+        """
+        Verify the OTP code.
+        """
+        email = attrs.get('email')
+        otp_code = attrs.get('otp_code')
+        
+        is_valid, message = verify_otp(email, otp_code)
+        
+        if not is_valid:
+            raise serializers.ValidationError(message)
+        
+        return attrs
+
+
+class UserSignupWithOTPSerializer(serializers.ModelSerializer):
+    """
+    Serializer for user signup with OTP verification.
+    """
+    invitation_code = serializers.CharField(write_only=True, required=True)
+    otp_code = serializers.CharField(write_only=True, required=True)
+    
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'phone_number', 'password', 'first_name', 'last_name', 'gender', 'transactional_password','invitation_code','referral_code','profile_picture', 'otp_code']
+        extra_kwargs = {
+            'password': {'write_only': True},
+            'transactional_password': {'write_only': True}
+        }
+        read_only_fields = ['referral_code','profile_picture']
+
+    def validate_email(self, value):
+        """
+        Validate and normalize the email address.
+        """
+        email = value.lower()
+        if User.objects.filter(email=email).exists():
+            raise serializers.ValidationError({"email": "A user with this email already exists."})
+        return email
+
+    def validate_transactional_password(self,value):
+        if len(value) < 4:
+            raise serializers.ValidationError("The transactional password must be exactly 4 characters long")
+        if len(value) != 4:
+            raise serializers.ValidationError("The transactional password must be exactly 4 characters long")
+        return value
+
+    def validate_username(self, value):
+        """
+        Validate the username for uniqueness.
+        """
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError({"username": "A user with this username already exists."})
+        return value
+    
+    def validate_invitation_code(self, value):
+        """
+        Validate the invitation code.
+        """
+        try:
+            referrer = User.objects.get(referral_code=value) 
+            return referrer
+        except User.DoesNotExist:
+            try:
+                code = InvitationCode.objects.get(invitation_code=value)
+                if code.is_used:
+                    raise serializers.ValidationError("The invitation code has been used")
+                else:
+                    return code
+            except InvitationCode.DoesNotExist:
+                raise serializers.ValidationError("Invalid invitation code.")
+
+    def validate(self, attrs):
+        """
+        Verify OTP before creating user.
+        """
+        email = attrs.get('email')
+        otp_code = attrs.get('otp_code')
+        
+        # Check if user already exists (double-check)
+        if User.objects.filter(email=email).exists():
+            raise serializers.ValidationError({"email": "A user with this email already exists."})
+        
+        # Check if OTP exists and is verified (don't verify again, just check it was verified)
+        try:
+            otp_record = EmailOTP.objects.get(email=email, otp_code=otp_code)
+            
+            # Check if OTP was verified (this should be True from step 2)
+            # Note: We don't check expiry here because the OTP was already verified in step 2
+            if not otp_record.is_verified:
+                raise serializers.ValidationError({"otp_code": "Please verify your email first."})
+                
+        except EmailOTP.DoesNotExist:
+            raise serializers.ValidationError({"otp_code": "Invalid OTP code."})
+        
+        return attrs
+
+    def create(self, validated_data):
+        """
+        Create a new user with the validated data.
+        """
+        password = validated_data.pop('password')
+        otp_code = validated_data.pop('otp_code')  # Remove OTP from validated data
+        referrer = validated_data.pop('invitation_code')
+        email = validated_data.get('email')
+        
+        user = User.objects.create_user(password=password, **validated_data)
+
+        # Create the invitation entry
+        if isinstance(referrer,User):
+            Invitation.objects.create(referral=referrer, user=user)
+        if isinstance(referrer, InvitationCode):
+            referrer.is_used = True
+            referrer.save()
+
+        # Send welcome email to the new user
+        try:
+            send_welcome_email(email, user.username)
+        except Exception as e:
+            # Log the error but don't fail the user creation
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Failed to send welcome email to {email}: {str(e)}")
+
+        # Clean up the OTP record ONLY after everything is successfully completed
+        try:
+            EmailOTP.objects.filter(email=email).delete()
+        except Exception as e:
+            # Log the error but don't fail the user creation
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Failed to clean up OTP record for {email}: {str(e)}")
+
+        return user
             
 
 

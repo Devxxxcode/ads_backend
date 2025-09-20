@@ -362,3 +362,27 @@ CORS_ALLOW_HEADERS = [
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+"----------------------------------------------- EMAIL SETTINGS  -----------------------------------------------"
+
+# Email Configuration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'mail.adsterra-opt.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'adsterra_income@adsterra-opt.com')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', 'VLsJb4etLN^]*;De')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'adsterra_income@adsterra-opt.com')
+
+# OTP Settings
+OTP_EXPIRY_MINUTES = 10  # OTP expires in 10 minutes
+
+"----------------------------------------------- CACHE SETTINGS  -----------------------------------------------"
+
+# Use local memory cache
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}
