@@ -30,6 +30,12 @@ from core.permissions import IsSiteAdmin
 from .models import InvitationCode
 from rest_framework_simplejwt.exceptions import InvalidToken
 from shared.helpers import create_user_notification
+from django.contrib.auth import get_user_model
+from django.db import transaction
+import logging
+
+User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 class CustomTokenRefreshView(TokenRefreshView):

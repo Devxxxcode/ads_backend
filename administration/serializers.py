@@ -318,3 +318,4 @@ class WithdrawalSerializer:
 
             # Send notification to the user
             create_user_notification(user, "Withdrawal Status Update", message)
+
