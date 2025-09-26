@@ -666,6 +666,75 @@ class AdminUserUpdateSerializer:
                 raise serializers.ValidationError({'credit_score':"Credit score must be between 0 and 100."})
             return value
 
+    class DeleteUser(AdminPasswordMixin, serializers.Serializer):
+        user = serializers.IntegerField(required=True)
+        reason = serializers.CharField(max_length=500, required=False, default="No reason provided")
+
+        def validate_user(self, value):
+            """
+            Validate that the user exists and can be deleted.
+            """
+            try:
+                user = User.objects.get(id=value)
+            except User.DoesNotExist:
+                raise serializers.ValidationError("User not found")
+                
+            # Prevent deletion of superusers or staff
+            if user.is_superuser or user.is_staff:
+                raise serializers.ValidationError("Cannot delete superuser or staff accounts")
+            
+            # Prevent self-deletion
+            if user == self.context.get("request").user:
+                raise serializers.ValidationError("Cannot delete your own account")
+                
+            return user
+
+        def save(self):
+            """
+            Delete the user and all associated data.
+            """
+            from django.db import transaction
+            from shared.helpers import create_admin_log, create_admin_notification
+            import logging
+            
+            logger = logging.getLogger(__name__)
+            
+            user_to_delete = self.validated_data['user']  # This is now a User object
+            reason = self.validated_data['reason']
+            request = self.context.get("request")
+            
+            username = user_to_delete.username
+            email = user_to_delete.email
+            
+            # Use transaction to ensure atomicity
+            with transaction.atomic():
+                # Delete the user (this will cascade to related objects)
+                user_to_delete.delete()
+                
+                # Log the deletion action using the existing helper
+                create_admin_log(
+                    request=request,
+                    message=f"Deleted user: {username} ({email})",
+                    reason=reason
+                )
+                
+                # Create admin notification
+                create_admin_notification(
+                    title="User Deleted",
+                    message=f"User {username} ({email}) has been successfully deleted by {request.user.username}"
+                )
+                
+                logger.info(f"User {username} ({email}) deleted by admin {request.user.username}. Reason: {reason}")
+            
+            return {
+                "deleted_user": {
+                    "username": username,
+                    "email": email,
+                    "reason": reason
+                }
+            }
+
+
 
 # ----------------------------------- OTP Serializers -----------------------------------------
 

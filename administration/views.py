@@ -386,6 +386,8 @@ class AdminUserManagementViewSet(StandardResponseMixin,ReadOnlyModelViewSet):
             return AdminUserUpdateSerializer.ResetUserAccount
         elif self.action == "update_credit_score":
             return AdminUserUpdateSerializer.UpdateUserCeditScore
+        elif self.action == "delete_user":
+            return AdminUserUpdateSerializer.DeleteUser
         return super().get_serializer_class()
     
     
@@ -514,6 +516,23 @@ class AdminUserManagementViewSet(StandardResponseMixin,ReadOnlyModelViewSet):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         return self.handle_action_response(user, "User Credit score has been updated successfully")
+    
+    @action(detail=False, methods=['post'], url_path='delete-user')
+    def delete_user(self, request):
+        """
+        Delete a user and all associated data.
+        This action cannot be undone.
+        """
+        serializer = self.get_serializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        result = serializer.save()
+        
+        return self.standard_response(
+            success=True,
+            message=f"User {result['deleted_user']['username']} has been successfully deleted",
+            data=result,
+            status_code=status.HTTP_200_OK,
+        )
     
 class OnHoldViewSet(StandardResponseMixin,ModelViewSet):
     queryset = OnHoldPay.objects.all()

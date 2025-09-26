@@ -15,7 +15,7 @@ def create_admin_log(request, message, reason=None):
         if user and not isinstance(user, AnonymousUser):
             AdminLog.objects.create(
                 user=user,
-                message=message,
+                description=message,
                 reason=reason
             )
             print("Admin log created successfully.")
