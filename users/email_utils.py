@@ -44,8 +44,8 @@ Website: adsterra-opt.com
         from django.core.mail import EmailMessage
         import time
         
-        # Retry logic for email sending
-        max_retries = 3
+        # Retry logic for email sending - minimal retries for slow server
+        max_retries = 1  # Only 1 retry to prevent long timeouts
         retry_delay = 2  # seconds
         
         for attempt in range(max_retries):
@@ -203,15 +203,45 @@ def create_or_update_otp(email):
     # Send OTP via email in background (async)
     logger.info(f"OTP created for {email}, sending email in background")
     
-    # Start email sending in background thread
+    # Start email sending in background thread with timeout protection
     import threading
+    import signal
+    
     def send_email_async():
         try:
-            email_sent = send_otp_email(email, otp_code)
-            if email_sent:
+            # Use threading timeout instead of signal (works in background threads)
+            import threading
+            import time
+            
+            result = [None]
+            exception = [None]
+            
+            def email_worker():
+                try:
+                    result[0] = send_otp_email(email, otp_code)
+                except Exception as e:
+                    exception[0] = e
+            
+            # Start email sending in a separate thread with timeout
+            email_worker_thread = threading.Thread(target=email_worker)
+            email_worker_thread.daemon = True
+            email_worker_thread.start()
+            
+            # Wait for email sending with 30-second timeout
+            email_worker_thread.join(timeout=30)
+            
+            if email_worker_thread.is_alive():
+                logger.warning(f"Background email sending timed out for {email} - email server too slow")
+                return
+            
+            if exception[0]:
+                raise exception[0]
+            
+            if result[0]:
                 logger.info(f"Background email sent successfully to {email}")
             else:
                 logger.warning(f"Background email sending failed for {email}")
+                
         except Exception as e:
             logger.error(f"Background email sending error for {email}: {str(e)}")
     
