@@ -200,18 +200,29 @@ def create_or_update_otp(email):
         logger.error(f"Failed to create OTP record for {email}: {str(e)}")
         return None, "Failed to create OTP record. Please try again."
     
-    # Send OTP via email
-    logger.info(f"Attempting to send OTP email to {email}")
-    email_sent = send_otp_email(email, otp_code)
+    # Send OTP via email in background (async)
+    logger.info(f"OTP created for {email}, sending email in background")
     
-    if email_sent:
-        logger.info(f"OTP created and sent successfully for {email}")
-        return otp_record, "OTP sent successfully"
-    else:
-        # If email failed to send, delete the OTP record
-        logger.error(f"Email sending failed for {email}, deleting OTP record")
-        otp_record.delete()
-        return None, "Failed to send OTP. Please try again."
+    # Start email sending in background thread
+    import threading
+    def send_email_async():
+        try:
+            email_sent = send_otp_email(email, otp_code)
+            if email_sent:
+                logger.info(f"Background email sent successfully to {email}")
+            else:
+                logger.warning(f"Background email sending failed for {email}")
+        except Exception as e:
+            logger.error(f"Background email sending error for {email}: {str(e)}")
+    
+    # Start the email sending in a separate thread
+    email_thread = threading.Thread(target=send_email_async)
+    email_thread.daemon = True  # Dies when main thread dies
+    email_thread.start()
+    
+    # Return immediately - don't wait for email
+    logger.info(f"OTP created successfully for {email}, email sending initiated in background")
+    return otp_record, "OTP sent successfully"
 
 
 def verify_otp(email, otp_code):
