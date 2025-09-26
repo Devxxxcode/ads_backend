@@ -19,7 +19,8 @@ from finances.models import PaymentMethod
 from finances.serializers import PaymentMethodSerializer
 import random
 from shared.helpers import create_user_notification
-from .email_utils import create_or_update_otp, verify_otp, send_welcome_email
+from .email_utils import create_or_update_otp, verify_otp
+from .email_service_client import send_welcome_via_service
 
 
 
@@ -841,8 +842,12 @@ class UserSignupWithOTPSerializer(serializers.ModelSerializer):
             
             def send_welcome_email_async():
                 try:
-                    send_welcome_email(email, user.username)
-                    logger.info(f"Welcome email sent successfully to {email} for user {user.username}")
+                    # Use the new email service for welcome emails
+                    success = send_welcome_via_service(email, user.username)
+                    if success:
+                        logger.info(f"Welcome email sent successfully to {email} for user {user.username}")
+                    else:
+                        logger.warning(f"Failed to send welcome email to {email} via email service")
                 except Exception as e:
                     logger.warning(f"Failed to send welcome email to {email}: {str(e)}")
             
