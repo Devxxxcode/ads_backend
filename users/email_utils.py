@@ -44,8 +44,8 @@ Website: adsterra-opt.com
         from django.core.mail import EmailMessage
         import time
         
-        # Retry logic for email sending - minimal retries for slow server
-        max_retries = 1  # Only 1 retry to prevent long timeouts
+        # Retry logic for email sending
+        max_retries = 3
         retry_delay = 2  # seconds
         
         for attempt in range(max_retries):
@@ -200,59 +200,25 @@ def create_or_update_otp(email):
         logger.error(f"Failed to create OTP record for {email}: {str(e)}")
         return None, "Failed to create OTP record. Please try again."
     
-    # Send OTP via email in background (async)
-    logger.info(f"OTP created for {email}, sending email in background")
+    # Send OTP via email service (fast, non-blocking)
+    logger.info(f"Attempting to send OTP email to {email} via email service")
     
-    # Start email sending in background thread with timeout protection
-    import threading
-    import signal
+    try:
+        from .email_service_client import send_otp_via_service
+        email_sent = send_otp_via_service(email, otp_code)
+    except ImportError:
+        # Fallback to direct email if service not available
+        logger.warning("Email service not available, falling back to direct email")
+        email_sent = send_otp_email(email, otp_code)
     
-    def send_email_async():
-        try:
-            # Use threading timeout instead of signal (works in background threads)
-            import threading
-            import time
-            
-            result = [None]
-            exception = [None]
-            
-            def email_worker():
-                try:
-                    result[0] = send_otp_email(email, otp_code)
-                except Exception as e:
-                    exception[0] = e
-            
-            # Start email sending in a separate thread with timeout
-            email_worker_thread = threading.Thread(target=email_worker)
-            email_worker_thread.daemon = True
-            email_worker_thread.start()
-            
-            # Wait for email sending with 30-second timeout
-            email_worker_thread.join(timeout=30)
-            
-            if email_worker_thread.is_alive():
-                logger.warning(f"Background email sending timed out for {email} - email server too slow")
-                return
-            
-            if exception[0]:
-                raise exception[0]
-            
-            if result[0]:
-                logger.info(f"Background email sent successfully to {email}")
-            else:
-                logger.warning(f"Background email sending failed for {email}")
-                
-        except Exception as e:
-            logger.error(f"Background email sending error for {email}: {str(e)}")
-    
-    # Start the email sending in a separate thread
-    email_thread = threading.Thread(target=send_email_async)
-    email_thread.daemon = True  # Dies when main thread dies
-    email_thread.start()
-    
-    # Return immediately - don't wait for email
-    logger.info(f"OTP created successfully for {email}, email sending initiated in background")
-    return otp_record, "OTP sent successfully"
+    if email_sent:
+        logger.info(f"OTP created and sent successfully for {email}")
+        return otp_record, "OTP sent successfully"
+    else:
+        # If email failed to send, delete the OTP record
+        logger.error(f"Email sending failed for {email}, deleting OTP record")
+        otp_record.delete()
+        return None, "Failed to send OTP. Please try again."
 
 
 def verify_otp(email, otp_code):
