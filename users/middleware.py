@@ -34,7 +34,7 @@ class SlowDownMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        wait_time = random.randint(2, 4)
+        wait_time = random.randint(5, 10)
         print(f"Waiting for {wait_time} seconds...")
         time.sleep(wait_time)
         print(f"Wait completed")
