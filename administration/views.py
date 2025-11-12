@@ -9,8 +9,8 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.decorators import action
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from .models import Settings,Event
-from .serializers import SettingsSerializer,DepositSerializer,SettingsVideoSerializer,EventSerializer,WithdrawalSerializer
+from .models import Settings, Event, Announcement, AnnouncementAcknowledgment
+from .serializers import SettingsSerializer,DepositSerializer,SettingsVideoSerializer,EventSerializer,WithdrawalSerializer,AnnouncementSerializer
 from shared.utils import standard_response as Response
 from shared.helpers import get_settings,create_admin_log
 from shared.mixins import StandardResponseMixin
@@ -25,6 +25,7 @@ from wallet.serializers import OnHoldPaySerializer
 from wallet.models import OnHoldPay
 from game.models import Game
 from game.serializers import AdminNegativeUserSerializer
+from django.utils import timezone
 
 
 User = get_user_model()
@@ -603,6 +604,143 @@ class AdminNegativeUserManagementViewSet(StandardResponseMixin,ModelViewSet):
                 message="Negative Submission for user has been deleted Successfully",
                 data=None,
                 status_code=status.HTTP_204_NO_CONTENT,
+            )
+
+
+class AnnouncementViewSet(StandardResponseMixin, ModelViewSet):
+    """
+    ViewSet for managing announcements.
+    Provides full CRUD operations for admins and user-specific endpoints.
+    """
+    queryset = Announcement.objects.all()
+    serializer_class = AnnouncementSerializer
+    
+    def get_permissions(self):
+        """
+        Admin actions require IsSiteAdmin, user actions require IsAuthenticated
+        """
+        if self.action in ['list', 'create', 'update', 'partial_update', 'destroy']:
+            return [IsSiteAdmin()]
+        return [IsAuthenticated()]
+
+    @swagger_auto_schema(
+        operation_summary="Get Active Announcement",
+        operation_description=(
+            "Retrieve the currently active announcement that the user hasn't seen yet. "
+            "Returns null if there's no active announcement or if the user has already seen it."
+        ),
+        responses={
+            200: openapi.Response(
+                description="Active announcement or null",
+                schema=AnnouncementSerializer
+            ),
+        },
+    )
+    @action(detail=False, methods=['get'], url_path='active')
+    def get_active_announcement(self, request):
+        """
+        Get active announcement for the current user that they haven't seen yet.
+        """
+        user = request.user
+        current_time = timezone.now()
+        
+        # Get active announcements that are within the valid date range
+        active_announcements = Announcement.objects.filter(
+            is_active=True,
+            start_date__lte=current_time,
+            end_date__gte=current_time
+        )
+        
+        # Filter out announcements the user has already seen
+        seen_announcement_ids = AnnouncementAcknowledgment.objects.filter(
+            user=user
+        ).values_list('announcement_id', flat=True)
+        
+        unseen_announcements = active_announcements.exclude(
+            id__in=seen_announcement_ids
+        ).order_by('-created_at')
+        
+        if unseen_announcements.exists():
+            announcement = unseen_announcements.first()
+            serializer = AnnouncementSerializer(announcement)
+            return Response(
+                success=True,
+                message="Active announcement retrieved successfully.",
+                data=serializer.data,
+                status_code=status.HTTP_200_OK
+            )
+        
+        return Response(
+            success=True,
+            message="No active announcements.",
+            data=None,
+            status_code=status.HTTP_200_OK
+        )
+
+    @swagger_auto_schema(
+        operation_summary="Mark Announcement as Seen",
+        operation_description="Mark a specific announcement as seen by the current user.",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'announcement_id': openapi.Schema(
+                    type=openapi.TYPE_INTEGER,
+                    description='ID of the announcement to mark as seen'
+                ),
+            },
+            required=['announcement_id']
+        ),
+        responses={
+            200: openapi.Response(description="Announcement marked as seen"),
+            404: openapi.Response(description="Announcement not found"),
+            400: openapi.Response(description="Already marked as seen"),
+        },
+    )
+    @action(detail=False, methods=['post'], url_path='mark-seen')
+    def mark_as_seen(self, request):
+        """
+        Mark an announcement as seen by the current user.
+        """
+        user = request.user
+        announcement_id = request.data.get('announcement_id')
+        
+        if not announcement_id:
+            return Response(
+                success=False,
+                message="Announcement ID is required.",
+                data=None,
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            announcement = Announcement.objects.get(id=announcement_id)
+        except Announcement.DoesNotExist:
+            return Response(
+                success=False,
+                message="Announcement not found.",
+                data=None,
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Create or get the acknowledgment
+        acknowledgment, created = AnnouncementAcknowledgment.objects.get_or_create(
+            user=user,
+            announcement=announcement
+        )
+        
+        if created:
+            return Response(
+                success=True,
+                message="Announcement marked as seen.",
+                data=None,
+                status_code=status.HTTP_200_OK
+            )
+        else:
+            return Response(
+                success=True,
+                message="Announcement already marked as seen.",
+                data=None,
+                status_code=status.HTTP_200_OK
             )
     
 

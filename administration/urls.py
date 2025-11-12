@@ -1,6 +1,6 @@
 from django.urls import path,include
 from rest_framework.routers import DefaultRouter
-from .views import SettingsViewSet,AdminDepositViewSet,EventViewSet,AdminUserManagementViewSet,OnHoldViewSet,AdminNegativeUserManagementViewSet,AdminWithdrawalViewSet
+from .views import SettingsViewSet,AdminDepositViewSet,EventViewSet,AdminUserManagementViewSet,OnHoldViewSet,AdminNegativeUserManagementViewSet,AdminWithdrawalViewSet,AnnouncementViewSet
 
 router = DefaultRouter()
 router.register(r'settings', SettingsViewSet, basename='settings')
@@ -12,6 +12,7 @@ router.register(r'events', EventViewSet, basename='event')
 router.register(r'users', AdminUserManagementViewSet, basename='users')
 router.register(r'onholds', OnHoldViewSet, basename='onhold')
 router.register(r'negative-users', AdminNegativeUserManagementViewSet, basename='negative-users')
+router.register(r'announcements', AnnouncementViewSet, basename='announcements')
 
 
 urlpatterns = [

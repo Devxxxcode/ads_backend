@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Settings,Event
+from .models import Settings, Event, Announcement, AnnouncementAcknowledgment
 from finances.models import Deposit,Withdrawal
 from shared.helpers import get_settings
 from users.models import Invitation
@@ -319,3 +319,42 @@ class WithdrawalSerializer:
             # Send notification to the user
             create_user_notification(user, "Withdrawal Status Update", message)
 
+
+class AnnouncementSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Announcement model with date validation.
+    """
+    class Meta:
+        model = Announcement
+        fields = ['id', 'title', 'message', 'is_active', 'start_date', 'end_date', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
+    
+    def validate(self, data):
+        """
+        Validate that end_date is after start_date.
+        """
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        
+        # If updating, get existing values if not provided
+        if self.instance:
+            start_date = start_date or self.instance.start_date
+            end_date = end_date or self.instance.end_date
+        
+        if start_date and end_date:
+            if end_date <= start_date:
+                raise serializers.ValidationError({
+                    "end_date": "End date must be after start date."
+                })
+        
+        return data
+
+
+class AnnouncementAcknowledgmentSerializer(serializers.ModelSerializer):
+    """
+    Serializer for AnnouncementAcknowledgment model.
+    """
+    class Meta:
+        model = AnnouncementAcknowledgment
+        fields = ['id', 'user', 'announcement', 'seen_at']
+        read_only_fields = ['seen_at']
