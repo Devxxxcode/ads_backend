@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Settings,Event,DailyResetTracker
+from .models import Settings, Event, DailyResetTracker, Announcement, AnnouncementAcknowledgment
 
 @admin.register(Settings)
 class SettingsAdmin(admin.ModelAdmin):
@@ -111,3 +111,38 @@ class DailyResetTrackerAdmin(admin.ModelAdmin):
     readonly_fields = ('last_reset_time',)
     ordering = ('-last_reset_time',) 
     search_fields = ('last_reset_time',)
+
+
+@admin.register(Announcement)
+class AnnouncementAdmin(admin.ModelAdmin):
+    """
+    Admin interface for the Announcement model.
+    """
+    list_display = ('title', 'is_active', 'start_date', 'end_date', 'created_at')
+    list_filter = ('is_active', 'created_at', 'start_date', 'end_date')
+    search_fields = ('title', 'message')
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('-created_at',)
+    fieldsets = (
+        (None, {
+            'fields': ('title', 'message', 'is_active')
+        }),
+        ('Date Range', {
+            'fields': ('start_date', 'end_date'),
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+        }),
+    )
+
+
+@admin.register(AnnouncementAcknowledgment)
+class AnnouncementAcknowledgmentAdmin(admin.ModelAdmin):
+    """
+    Admin interface for the AnnouncementAcknowledgment model.
+    """
+    list_display = ('user', 'announcement', 'seen_at')
+    list_filter = ('seen_at', 'announcement')
+    search_fields = ('user__username', 'user__email', 'announcement__title')
+    readonly_fields = ('seen_at',)
+    ordering = ('-seen_at',)

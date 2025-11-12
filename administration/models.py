@@ -86,3 +86,76 @@ class DailyResetTracker(models.Model):
         default=24.00,  # Default to 24 hours
         verbose_name="Reset Interval in Hours",
     )
+
+
+class Announcement(models.Model):
+    """
+    Model to store announcements that will be displayed to users.
+    """
+    title = models.CharField(max_length=255, verbose_name="Announcement Title")
+    message = models.TextField(verbose_name="Announcement Message")
+    is_active = models.BooleanField(default=True, verbose_name="Is Active")
+    start_date = models.DateTimeField(verbose_name="Start Date")
+    end_date = models.DateTimeField(verbose_name="End Date")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Announcement"
+        verbose_name_plural = "Announcements"
+    
+    def __str__(self):
+        return f"{self.title} (Active: {self.is_active})"
+    
+    def clean(self):
+        """
+        Validate dates before saving.
+        """
+        from django.core.exceptions import ValidationError
+        
+        if self.start_date and self.end_date:
+            # Check that end_date is after start_date
+            if self.end_date <= self.start_date:
+                raise ValidationError({
+                    'end_date': 'End date must be after start date.'
+                })
+    
+    def save(self, *args, **kwargs):
+        """Override save to call clean()"""
+        self.clean()
+        super().save(*args, **kwargs)
+    
+    def is_valid_for_display(self):
+        """Check if announcement should be displayed based on date range"""
+        from django.utils import timezone
+        current_time = timezone.now()
+        return self.is_active and self.start_date <= current_time <= self.end_date
+
+
+class AnnouncementAcknowledgment(models.Model):
+    """
+    Model to track which users have seen which announcements.
+    """
+    user = models.ForeignKey(
+        "users.User",
+        on_delete=models.CASCADE,
+        related_name="announcement_acknowledgments",
+        verbose_name="User"
+    )
+    announcement = models.ForeignKey(
+        Announcement,
+        on_delete=models.CASCADE,
+        related_name="acknowledgments",
+        verbose_name="Announcement"
+    )
+    seen_at = models.DateTimeField(auto_now_add=True, verbose_name="Seen At")
+    
+    class Meta:
+        unique_together = ('user', 'announcement')
+        ordering = ['-seen_at']
+        verbose_name = "Announcement Acknowledgment"
+        verbose_name_plural = "Announcement Acknowledgments"
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.announcement.title}"
