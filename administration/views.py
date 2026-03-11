@@ -14,6 +14,7 @@ from .serializers import SettingsSerializer,DepositSerializer,SettingsVideoSeria
 from shared.utils import standard_response as Response
 from shared.helpers import get_settings,create_admin_log
 from shared.mixins import StandardResponseMixin
+from shared.pagination import CustomPagination
 from core.permissions import IsSiteAdmin,IsAdminOrReadOnly
 from finances.models import Deposit,Withdrawal
 from cloudinary.uploader import upload
@@ -141,11 +142,16 @@ class SettingsViewSet(GenericViewSet):
         )
 
 
-class AdminDepositViewSet(StandardResponseMixin, ViewSet):
+class AdminDepositViewSet(StandardResponseMixin, GenericViewSet):
     """
     Admin ViewSet for listing all deposits and updating the status of a deposit instance.
     """
     permission_classes = [IsSiteAdmin]
+    pagination_class = CustomPagination
+    filter_backends = [OrderingFilter, SearchFilter]
+    search_fields = ["user__username", "user__email", "user__phone_number", "status"]
+    ordering_fields = ["id", "amount", "status", "date_time", "created_at", "user__username"]
+    ordering = ["-date_time"]
 
     def get_serializer_class(self):
         """
@@ -157,6 +163,9 @@ class AdminDepositViewSet(StandardResponseMixin, ViewSet):
         }
         return action_to_serializer.get(self.action, DepositSerializer.List)
 
+    def get_queryset(self):
+        return Deposit.objects.select_related("user").all()
+
     def list(self, request):
         """
         List all deposits for admin users.
@@ -164,8 +173,13 @@ class AdminDepositViewSet(StandardResponseMixin, ViewSet):
         if getattr(self, 'swagger_fake_view', False):
             return Response([], status=status.HTTP_200_OK)
 
-        deposits = Deposit.objects.all().order_by('date_time')
+        deposits = self.filter_queryset(self.get_queryset())
+        paginated_deposits = self.paginate_queryset(deposits)
         serializer_class = self.get_serializer_class()
+        if paginated_deposits is not None:
+            serializer = serializer_class(paginated_deposits, many=True)
+            return self.get_paginated_response(serializer.data)
+
         serializer = serializer_class(deposits, many=True)
         return Response(
             success=True,
@@ -201,11 +215,16 @@ class AdminDepositViewSet(StandardResponseMixin, ViewSet):
             status_code=status.HTTP_200_OK,
         )
 
-class AdminWithdrawalViewSet(StandardResponseMixin, ViewSet):
+class AdminWithdrawalViewSet(StandardResponseMixin, GenericViewSet):
     """
     Admin ViewSet for listing all withdrawals and updating the status of a withdrawal instance.
     """
     permission_classes = [IsSiteAdmin]
+    pagination_class = CustomPagination
+    filter_backends = [OrderingFilter, SearchFilter]
+    search_fields = ["user__username", "user__email", "user__phone_number", "status"]
+    ordering_fields = ["id", "amount", "status", "created_at", "is_reviewed", "user__username"]
+    ordering = ["-created_at"]
 
     def get_serializer_class(self):
         """
@@ -216,6 +235,9 @@ class AdminWithdrawalViewSet(StandardResponseMixin, ViewSet):
             "update_status": WithdrawalSerializer.UpdateStatus,
         }
         return action_to_serializer.get(self.action, WithdrawalSerializer.List)
+
+    def get_queryset(self):
+        return Withdrawal.objects.select_related("user").all()
 
     @swagger_auto_schema(
         operation_summary="List All Withdrawals",
@@ -238,8 +260,13 @@ class AdminWithdrawalViewSet(StandardResponseMixin, ViewSet):
         if getattr(self, 'swagger_fake_view', False):
             return Response([], status=status.HTTP_200_OK)
 
-        withdrawals = Withdrawal.objects.all().order_by('-created_at')
+        withdrawals = self.filter_queryset(self.get_queryset())
+        paginated_withdrawals = self.paginate_queryset(withdrawals)
         serializer_class = self.get_serializer_class()
+        if paginated_withdrawals is not None:
+            serializer = serializer_class(paginated_withdrawals, many=True)
+            return self.get_paginated_response(serializer.data)
+
         serializer = serializer_class(withdrawals, many=True)
         return Response(
             success=True,
@@ -345,20 +372,41 @@ class EventViewSet(StandardResponseMixin,ModelViewSet):
 class AdminUserManagementViewSet(StandardResponseMixin,ReadOnlyModelViewSet):
     serializer_class = UserProfileListSerializer
     permission_classes = [IsSiteAdmin]
+    pagination_class = CustomPagination
 
     def get_queryset(self):
         """
         Annotate the queryset with complex fields and return it.
         """
-        return User.objects.users().annotate(
-            total_games_played=Count('games', filter=Q(games__played=True)),
-            total_negative_product=Count('games', filter=Q(games__played=True)& Q(games__special_product=True)),
-            wallet_commission=F('wallet__commission')
+        return (
+            User.objects.users()
+            .select_related("wallet", "wallet__package")
+            .annotate(
+                total_games_played=Count("games", filter=Q(games__played=True)),
+                total_negative_product=Count(
+                    "games",
+                    filter=Q(games__played=True) & Q(games__special_product=True),
+                ),
+                wallet_commission=F("wallet__commission"),
+            )
         )
 
     filter_backends = [OrderingFilter, SearchFilter]
     search_fields = ['username', 'email', 'phone_number','first_name','last_name']
-    ordering_fields = ['wallet__commission', 'total_games_played', 'total_negative_product',] 
+    ordering_fields = [
+        'id',
+        'username',
+        'email',
+        'phone_number',
+        'first_name',
+        'last_name',
+        'today_profit',
+        'wallet__balance',
+        'wallet__commission',
+        'wallet_commission',
+        'total_games_played',
+        'total_negative_product',
+    ]
     ordering = ['-id'] 
 
     def get_serializer_class(self):
@@ -544,9 +592,29 @@ class OnHoldViewSet(StandardResponseMixin,ModelViewSet):
 class AdminNegativeUserManagementViewSet(StandardResponseMixin,ModelViewSet):
     serializer_class = AdminNegativeUserSerializer.List
     permission_classes = [IsSiteAdmin]
+    pagination_class = CustomPagination
+    filter_backends = [OrderingFilter, SearchFilter]
+    search_fields = ["user__username", "user__email", "user__phone_number"]
+    ordering_fields = [
+        "id",
+        "is_active",
+        "game_number",
+        "created_at",
+        "updated_at",
+        "user__username",
+        "user__last_connection",
+        "user__today_profit",
+        "user__wallet__balance",
+        "user__wallet__commission",
+    ]
+    ordering = ["-id"]
     
     def get_queryset(self):
-        return Game.objects.filter(is_active=True,played=False,special_product=True)
+        return (
+            Game.objects.filter(is_active=True, played=False, special_product=True)
+            .select_related("user", "user__wallet", "user__wallet__package", "on_hold")
+            .prefetch_related("products")
+        )
 
     def get_serializer_class(self):
         if self.action in ['retrieve', 'list']:
@@ -743,4 +811,3 @@ class AnnouncementViewSet(StandardResponseMixin, ModelViewSet):
                 status_code=status.HTTP_200_OK
             )
     
-

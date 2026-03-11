@@ -5,6 +5,7 @@ from shared.helpers import get_settings
 from users.models import Invitation
 # from users.serializers import UserPartialSerilzer
 from shared.helpers import create_user_notification
+from shared.mixins import AdminPasswordMixin
 from django.contrib.auth import get_user_model
 from decimal import Decimal
 
@@ -223,7 +224,7 @@ class WithdrawalSerializer:
             ref_name = "Withdrawal - List"
             
 
-    class UpdateStatus(serializers.ModelSerializer):
+    class UpdateStatus(AdminPasswordMixin, serializers.ModelSerializer):
         """
         Serializer for updating the status of a withdrawal.
         """
@@ -231,6 +232,7 @@ class WithdrawalSerializer:
             model = Withdrawal
             fields = [
                 "status",
+                "admin_password",
             ]
             ref_name = "Withdrawal - UpdateStatus"
 
