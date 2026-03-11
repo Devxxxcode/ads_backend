@@ -151,7 +151,7 @@ class AdminDepositViewSet(StandardResponseMixin, GenericViewSet):
     filter_backends = [OrderingFilter, SearchFilter]
     search_fields = ["user__username", "user__email", "user__phone_number", "status"]
     ordering_fields = ["id", "amount", "status", "date_time", "created_at", "user__username"]
-    ordering = ["id"]
+    ordering = ["-id"]
 
     def get_serializer_class(self):
         """
@@ -224,7 +224,7 @@ class AdminWithdrawalViewSet(StandardResponseMixin, GenericViewSet):
     filter_backends = [OrderingFilter, SearchFilter]
     search_fields = ["user__username", "user__email", "user__phone_number", "status"]
     ordering_fields = ["id", "amount", "status", "created_at", "is_reviewed", "user__username"]
-    ordering = ["id"]
+    ordering = ["-id"]
 
     def get_serializer_class(self):
         """
@@ -407,7 +407,7 @@ class AdminUserManagementViewSet(StandardResponseMixin,ReadOnlyModelViewSet):
         'total_games_played',
         'total_negative_product',
     ]
-    ordering = ['id'] 
+    ordering = ['-id'] 
 
     def get_serializer_class(self):
         """
@@ -607,7 +607,7 @@ class AdminNegativeUserManagementViewSet(StandardResponseMixin,ModelViewSet):
         "user__wallet__balance",
         "user__wallet__commission",
     ]
-    ordering = ["id"]
+    ordering = ["-id"]
     
     def get_queryset(self):
         return (
