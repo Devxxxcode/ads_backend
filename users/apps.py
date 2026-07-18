@@ -7,8 +7,7 @@ class UsersConfig(AppConfig):
     name = 'users'
 
     def ready(self):
-        print("ADS_BACKEND_STARTUP_MARKER: users app loaded with EMAIL_SERVICE_URL=https://email.adsterra-opt.com")
+        print("ADS_BACKEND_STARTUP_MARKER: users app loaded with Mailtrap email delivery")
         logging.getLogger(__name__).info(
-            "ADS_BACKEND_STARTUP_MARKER: users app loaded with email service URL %s",
-            "https://email.adsterra-opt.com",
+            "ADS_BACKEND_STARTUP_MARKER: users app loaded with Mailtrap email delivery",
         )

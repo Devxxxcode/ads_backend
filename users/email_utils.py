@@ -200,15 +200,15 @@ def create_or_update_otp(email):
         logger.error(f"Failed to create OTP record for {email}: {str(e)}")
         return None, "Failed to create OTP record. Please try again."
     
-    # Send OTP via email service (fast, non-blocking)
-    logger.info(f"Attempting to send OTP email to {email} via email service")
+    # Send OTP via Mailtrap (fast, non-blocking)
+    logger.info(f"Attempting to send OTP email to {email} via Mailtrap")
     
     try:
         from .email_service_client import send_otp_via_service
         email_sent = send_otp_via_service(email, otp_code)
     except ImportError:
-        # Fallback to direct email if service not available
-        logger.warning("Email service not available, falling back to direct email")
+        # Fallback to direct email if Mailtrap is not available
+        logger.warning("Mailtrap not available, falling back to direct email")
         email_sent = send_otp_email(email, otp_code)
     
     if email_sent:

@@ -1,158 +1,132 @@
-import json
 import logging
 import os
-import subprocess
+import time
+
+import mailtrap as mt
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-# Email service configuration
-EMAIL_SERVICE_URL = os.getenv(
-    'EMAIL_SERVICE_URL',
-    getattr(settings, 'EMAIL_SERVICE_URL', 'https://email.adsterra-opt.com')
-).rstrip('/')
+MAILTRAP_API_TOKEN = os.getenv(
+    "MAILTRAP_API_TOKEN",
+    getattr(settings, "MAILTRAP_API_TOKEN", "0c98e43226e123cf26a0a6fa801ae124"),
+).strip()
+MAILTRAP_SENDER_EMAIL = os.getenv(
+    "MAILTRAP_SENDER_EMAIL",
+    getattr(settings, "MAILTRAP_SENDER_EMAIL", "ho_reply@adsterra-opt.com"),
+).strip()
+MAILTRAP_SENDER_NAME = os.getenv(
+    "MAILTRAP_SENDER_NAME",
+    getattr(settings, "MAILTRAP_SENDER_NAME", "no_reply@adsterra-opt.com"),
+).strip()
+
+
+def _send_mailtrap_email(to_email, subject, text, category, username=None):
+    if not MAILTRAP_API_TOKEN:
+        raise RuntimeError("MAILTRAP_API_TOKEN is not configured")
+
+    mail = mt.Mail(
+        sender=mt.Address(email=MAILTRAP_SENDER_EMAIL, name=MAILTRAP_SENDER_NAME),
+        to=[mt.Address(email=to_email)],
+        subject=subject,
+        text=text,
+        category=category,
+    )
+
+    client = mt.MailtrapClient(token=MAILTRAP_API_TOKEN)
+    print(
+        f"MAILTRAP_CALL: to={to_email} subject={subject!r} category={category!r}"
+        + (f" username={username}" if username else "")
+    )
+    logger.info(
+        "Sending mail via Mailtrap to=%s subject=%s category=%s username=%s",
+        to_email,
+        subject,
+        category,
+        username,
+    )
+
+    response = client.send(mail)
+    print(f"MAILTRAP_RESPONSE: to={to_email} response={response}")
+    logger.info("Mailtrap response for %s: %s", to_email, response)
+    return True
+
 
 def send_otp_via_service(email, otp_code):
-    """Send OTP email via external email service"""
-    try:
-        url = f"{EMAIL_SERVICE_URL}/send-otp"
-        data = {
-            "to_email": email,
-            "otp_code": otp_code
-        }
-        print(f"EMAIL_SERVICE_CALL: POST {url} email={email}")
-        logger.info("Sending OTP via email service url=%s email=%s", url, email)
-        
-        response = _post_json_via_curl(url, data, timeout=60)
-        print(f"EMAIL_SERVICE_RESPONSE: POST {url} status={response.status_code} body={response.text[:500]}")
-        logger.info(
-            "Email service response url=%s status=%s body=%s",
-            url,
-            response.status_code,
-            response.text[:500],
-        )
-        
-        if response.status_code == 200:
-            result = response.json()
-            if result.get('success'):
-                logger.info(f"OTP email sent successfully via service to {email}")
-                return True
-            else:
-                logger.error(f"Email service returned error: {result.get('message')}")
+    """Send OTP email directly through Mailtrap."""
+    safe_otp = str(otp_code).strip()[:6]
+    subject = "Email Verification Code - Adsterra Opt"
+    message = (
+        "Dear User,\n\n"
+        "Thank you for registering with Adsterra Opt. To complete your account verification, "
+        f"please use the following verification code:\n\nVerification Code: {safe_otp}\n\n"
+        f"This code will expire in {getattr(settings, 'OTP_EXPIRY_MINUTES', 10)} minutes for security purposes.\n\n"
+        "If you did not request this verification code, please ignore this email and do not share this code with anyone.\n\n"
+        "For security reasons, never share your verification code with others.\n\n"
+        "Best regards,\nAdsterra Opt Support Team\nWebsite: adsterra-opt.com\n"
+    )
+
+    max_retries = 3
+    retry_delay = 1
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            print(f"MAILTRAP_SEND_OTP_ATTEMPT: email={email} attempt={attempt}")
+            return _send_mailtrap_email(
+                to_email=email,
+                subject=subject,
+                text=message,
+                category="OTP Verification",
+            )
+        except Exception as e:
+            print(f"MAILTRAP_SEND_OTP_ERROR: email={email} attempt={attempt} error={e}")
+            logger.error("Mailtrap OTP send failed for %s: %s", email, str(e))
+            if attempt == max_retries:
                 return False
-        else:
-            logger.error(f"Email service HTTP error: {response.status_code}")
-            return False
-            
-    except TimeoutError:
-        print(f"EMAIL_SERVICE_ERROR: timeout url={url} email={email}")
-        logger.error(f"Email service timeout for {email}")
-        return False
-    except RuntimeError as e:
-        print(f"EMAIL_SERVICE_ERROR: request_exception url={url} email={email} error={e}")
-        logger.error(f"Email service request error for {email}: {str(e)}")
-        return False
-    except Exception as e:
-        print(f"EMAIL_SERVICE_ERROR: unexpected url={url} email={email} error={e}")
-        logger.error(f"Email service error for {email}: {str(e)}")
-        return False
+            time.sleep(retry_delay)
+            retry_delay *= 2
+
+    return False
+
 
 def send_welcome_via_service(email, username):
-    """Send welcome email via external email service"""
-    try:
-        url = f"{EMAIL_SERVICE_URL}/send-welcome"
-        data = {
-            "to_email": email,
-            "username": username
-        }
-        print(f"EMAIL_SERVICE_CALL: POST {url} email={email} username={username}")
-        logger.info("Sending welcome via email service url=%s email=%s username=%s", url, email, username)
-        
-        response = _post_json_via_curl(url, data, timeout=60)
-        print(f"EMAIL_SERVICE_RESPONSE: POST {url} status={response.status_code} body={response.text[:500]}")
-        logger.info(
-            "Email service response url=%s status=%s body=%s",
-            url,
-            response.status_code,
-            response.text[:500],
-        )
-        
-        if response.status_code == 200:
-            result = response.json()
-            if result.get('success'):
-                logger.info(f"Welcome email sent successfully via service to {email}")
-                return True
-            else:
-                logger.error(f"Email service returned error: {result.get('message')}")
+    """Send welcome email directly through Mailtrap."""
+    subject = "Welcome to Adsterra Opt - Account Created Successfully"
+    message = (
+        f"Dear {username},\n\n"
+        "Welcome to Adsterra Opt! Your account has been successfully created and verified.\n\n"
+        "Account Information:\n"
+        f"- Username: {username}\n"
+        f"- Email Address: {email}\n\n"
+        "Your account is now active and you can:\n\n"
+        "1. Access your personal dashboard\n"
+        "2. Start using our platform features\n"
+        "3. Explore available opportunities\n"
+        "4. Manage your account settings\n\n"
+        "If you have any questions or need assistance, please contact our support team.\n\n"
+        "Thank you for choosing Adsterra Opt!\n\n"
+        "Best regards,\nAdsterra Opt Support Team\nWebsite: adsterra-opt.com\n"
+    )
+
+    max_retries = 3
+    retry_delay = 1
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            print(f"MAILTRAP_SEND_WELCOME_ATTEMPT: email={email} username={username} attempt={attempt}")
+            return _send_mailtrap_email(
+                to_email=email,
+                subject=subject,
+                text=message,
+                category="Welcome Email",
+                username=username,
+            )
+        except Exception as e:
+            print(f"MAILTRAP_SEND_WELCOME_ERROR: email={email} attempt={attempt} error={e}")
+            logger.error("Mailtrap welcome send failed for %s: %s", email, str(e))
+            if attempt == max_retries:
                 return False
-        else:
-            logger.error(f"Email service HTTP error: {response.status_code}")
-            return False
-            
-    except TimeoutError:
-        print(f"EMAIL_SERVICE_ERROR: timeout url={url} email={email}")
-        logger.error(f"Email service timeout for {email}")
-        return False
-    except RuntimeError as e:
-        print(f"EMAIL_SERVICE_ERROR: request_exception url={url} email={email} error={e}")
-        logger.error(f"Email service request error for {email}: {str(e)}")
-        return False
-    except Exception as e:
-        print(f"EMAIL_SERVICE_ERROR: unexpected url={url} email={email} error={e}")
-        logger.error(f"Email service error for {email}: {str(e)}")
-        return False
+            time.sleep(retry_delay)
+            retry_delay *= 2
 
-
-def _post_json_via_curl(url, data, timeout=60):
-    """Send JSON over curl with HTTP/2 enabled so LiteSpeed accepts the request."""
-    payload = json.dumps(data)
-    command = [
-        "curl",
-        "--silent",
-        "--show-error",
-        "--http2",
-        "--max-time",
-        str(timeout),
-        "-H",
-        "Content-Type: application/json",
-        "--data-binary",
-        "@-",
-        "-w",
-        "\\n%{http_code}",
-        url,
-    ]
-
-    try:
-        result = subprocess.run(
-            command,
-            input=payload,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-    except FileNotFoundError as e:
-        raise RuntimeError("curl command is not available") from e
-
-    if result.returncode != 0:
-        stderr = (result.stderr or "").strip()
-        raise RuntimeError(stderr or f"curl exited with status {result.returncode}")
-
-    stdout = result.stdout or ""
-    if "\n" not in stdout:
-        raise RuntimeError(f"Invalid curl response: {stdout[:200]}")
-
-    body, status_text = stdout.rsplit("\n", 1)
-    try:
-        status_code = int(status_text.strip())
-    except ValueError as e:
-        raise RuntimeError(f"Invalid HTTP status from curl: {status_text!r}") from e
-
-    class CurlResponse:
-        def __init__(self, status_code, text):
-            self.status_code = status_code
-            self.text = text
-
-        def json(self):
-            return json.loads(self.text)
-
-    return CurlResponse(status_code, body)
+    return False
