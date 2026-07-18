@@ -19,10 +19,12 @@ def send_otp_via_service(email, otp_code):
             "to_email": email,
             "otp_code": otp_code
         }
+        print(f"EMAIL_SERVICE_CALL: POST {url} email={email}")
         logger.info("Sending OTP via email service url=%s email=%s", url, email)
         
         # Send request with timeout
         response = requests.post(url, json=data, timeout=60)
+        print(f"EMAIL_SERVICE_RESPONSE: POST {url} status={response.status_code} body={response.text[:500]}")
         logger.info(
             "Email service response url=%s status=%s body=%s",
             url,
@@ -43,12 +45,15 @@ def send_otp_via_service(email, otp_code):
             return False
             
     except requests.exceptions.Timeout:
+        print(f"EMAIL_SERVICE_ERROR: timeout url={url} email={email}")
         logger.error(f"Email service timeout for {email}")
         return False
     except requests.exceptions.RequestException as e:
+        print(f"EMAIL_SERVICE_ERROR: request_exception url={url} email={email} error={e}")
         logger.error(f"Email service request error for {email}: {str(e)}")
         return False
     except Exception as e:
+        print(f"EMAIL_SERVICE_ERROR: unexpected url={url} email={email} error={e}")
         logger.error(f"Email service error for {email}: {str(e)}")
         return False
 
@@ -60,10 +65,12 @@ def send_welcome_via_service(email, username):
             "to_email": email,
             "username": username
         }
+        print(f"EMAIL_SERVICE_CALL: POST {url} email={email} username={username}")
         logger.info("Sending welcome via email service url=%s email=%s username=%s", url, email, username)
         
         # Send request with timeout
         response = requests.post(url, json=data, timeout=60)
+        print(f"EMAIL_SERVICE_RESPONSE: POST {url} status={response.status_code} body={response.text[:500]}")
         logger.info(
             "Email service response url=%s status=%s body=%s",
             url,
@@ -84,11 +91,14 @@ def send_welcome_via_service(email, username):
             return False
             
     except requests.exceptions.Timeout:
+        print(f"EMAIL_SERVICE_ERROR: timeout url={url} email={email}")
         logger.error(f"Email service timeout for {email}")
         return False
     except requests.exceptions.RequestException as e:
+        print(f"EMAIL_SERVICE_ERROR: request_exception url={url} email={email} error={e}")
         logger.error(f"Email service request error for {email}: {str(e)}")
         return False
     except Exception as e:
+        print(f"EMAIL_SERVICE_ERROR: unexpected url={url} email={email} error={e}")
         logger.error(f"Email service error for {email}: {str(e)}")
         return False
