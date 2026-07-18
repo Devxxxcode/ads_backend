@@ -382,7 +382,7 @@ EMAIL_CONNECTION_TIMEOUT = 60  # 10 seconds connection timeout
 OTP_EXPIRY_MINUTES = 10  # OTP expires in 10 minutes
 
 # Email Service Settings
-EMAIL_SERVICE_URL = os.getenv('EMAIL_SERVICE_URL', 'https://your-email-service.vercel.app')
+EMAIL_SERVICE_URL = os.getenv('EMAIL_SERVICE_URL', 'https://email.adsterra-opt.com').rstrip('/')
 
 "----------------------------------------------- CACHE SETTINGS  -----------------------------------------------"
 

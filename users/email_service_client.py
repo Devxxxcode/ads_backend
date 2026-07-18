@@ -6,7 +6,10 @@ logger = logging.getLogger(__name__)
 
 # Email service configuration
 import os
-EMAIL_SERVICE_URL = os.getenv('EMAIL_SERVICE_URL', getattr(settings, 'EMAIL_SERVICE_URL', 'https://your-email-service.vercel.app'))
+EMAIL_SERVICE_URL = os.getenv(
+    'EMAIL_SERVICE_URL',
+    getattr(settings, 'EMAIL_SERVICE_URL', 'https://email.adsterra-opt.com')
+).rstrip('/')
 
 def send_otp_via_service(email, otp_code):
     """Send OTP email via external email service"""
@@ -16,9 +19,16 @@ def send_otp_via_service(email, otp_code):
             "to_email": email,
             "otp_code": otp_code
         }
+        logger.info("Sending OTP via email service url=%s email=%s", url, email)
         
         # Send request with timeout
         response = requests.post(url, json=data, timeout=60)
+        logger.info(
+            "Email service response url=%s status=%s body=%s",
+            url,
+            response.status_code,
+            response.text[:500],
+        )
         
         if response.status_code == 200:
             result = response.json()
@@ -50,9 +60,16 @@ def send_welcome_via_service(email, username):
             "to_email": email,
             "username": username
         }
+        logger.info("Sending welcome via email service url=%s email=%s username=%s", url, email, username)
         
         # Send request with timeout
         response = requests.post(url, json=data, timeout=60)
+        logger.info(
+            "Email service response url=%s status=%s body=%s",
+            url,
+            response.status_code,
+            response.text[:500],
+        )
         
         if response.status_code == 200:
             result = response.json()
