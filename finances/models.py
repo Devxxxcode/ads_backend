@@ -167,3 +167,5 @@ class Withdrawal(models.Model):
             created_at__gte=start_of_day,
             created_at__lt=end_of_day
         ).count()
+
+
