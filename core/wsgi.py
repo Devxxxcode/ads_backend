@@ -13,4 +13,6 @@ from django.core.wsgi import get_wsgi_application
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 
+print("ADS_BACKEND_BOOT_MARKER: core.wsgi loaded with EMAIL_SERVICE_URL=https://email.adsterra-opt.com")
+
 application = get_wsgi_application()
