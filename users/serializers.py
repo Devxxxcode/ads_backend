@@ -768,7 +768,13 @@ class SendOTPSerializer(serializers.Serializer):
         otp_record, message = create_or_update_otp(email)
         
         if otp_record:
-            return {"message": message}
+            return {
+                "message": message.get("message") if isinstance(message, dict) else message,
+                "cooldown_seconds": message.get("cooldown_seconds") if isinstance(message, dict) else None,
+                "daily_limit": message.get("daily_limit") if isinstance(message, dict) else None,
+                "sent_count": message.get("sent_count") if isinstance(message, dict) else None,
+                "remaining_today": message.get("remaining_today") if isinstance(message, dict) else None,
+            }
         else:
             raise serializers.ValidationError(message)
 
@@ -943,5 +949,4 @@ class UserSignupWithOTPSerializer(serializers.ModelSerializer):
 
         return user
             
-
 

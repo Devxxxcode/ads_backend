@@ -113,6 +113,7 @@ class UserAuthViewSet(ViewSet):
         return Response(
             success=True,
             message=result["message"],
+            data=result,
             status_code=status.HTTP_200_OK
         )
 

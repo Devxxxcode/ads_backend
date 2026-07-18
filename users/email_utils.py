@@ -1,12 +1,13 @@
 import secrets
 import string
+import math
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
-from datetime import timedelta
+from datetime import datetime, timedelta, time as dt_time
 from django.core.cache import cache
 from django.db import transaction
-from .models import EmailOTP
+from .models import EmailOTP, EmailOTPSendQuota
 import logging
 
 logger = logging.getLogger(__name__)
@@ -160,9 +161,44 @@ def cleanup_expired_otps():
 
 def check_rate_limit(email, action='send_otp'):
     """Check if user has exceeded rate limits."""
-    # Rate limiting disabled for now - using local memory cache
-    # TODO: Re-enable when Redis is properly configured
-    return True, "OK"
+    if action != 'send_otp':
+        return True, "OK"
+
+    today = timezone.localdate()
+    now = timezone.now()
+    send_limit = getattr(settings, "OTP_EMAILS_PER_DAY", 5)
+    cooldown_seconds = getattr(settings, "OTP_SEND_COOLDOWN_SECONDS", 60)
+
+    quota, _ = EmailOTPSendQuota.objects.get_or_create(
+        email=email,
+        send_date=today,
+        defaults={
+            "send_count": 0,
+            "last_sent_at": None,
+            "cooldown_expires_at": None,
+        },
+    )
+
+    if quota.send_count >= send_limit:
+        reset_at = timezone.make_aware(datetime.combine(today + timedelta(days=1), dt_time.min), timezone.get_current_timezone())
+        wait_seconds = max(0, int((reset_at - now).total_seconds()))
+        return False, f"You can only request {send_limit} OTP emails per day. Please try again in {wait_seconds} seconds."
+
+    if quota.cooldown_expires_at and now < quota.cooldown_expires_at:
+        wait_seconds = max(1, math.ceil((quota.cooldown_expires_at - now).total_seconds()))
+        return False, f"Please wait {wait_seconds} seconds before requesting another code."
+
+    quota.last_sent_at = now
+    quota.cooldown_expires_at = now + timedelta(seconds=cooldown_seconds)
+    quota.save(update_fields=["last_sent_at", "cooldown_expires_at"])
+
+    return True, {
+        "message": "OK",
+        "cooldown_seconds": cooldown_seconds,
+        "daily_limit": send_limit,
+        "sent_count": quota.send_count,
+        "remaining_today": max(0, send_limit - quota.send_count),
+    }
 
 
 def create_or_update_otp(email):
@@ -174,6 +210,7 @@ def create_or_update_otp(email):
     if not can_proceed:
         logger.warning(f"Rate limit exceeded for {email}: {message}")
         return None, message
+    rate_limit_meta = message if isinstance(message, dict) else {"message": message}
     
     # Clean up expired OTPs first
     cleanup_expired_otps()
@@ -212,8 +249,17 @@ def create_or_update_otp(email):
         email_sent = send_otp_email(email, otp_code)
     
     if email_sent:
+        quota = EmailOTPSendQuota.objects.get(email=email, send_date=timezone.localdate())
+        quota.send_count = quota.send_count + 1
+        quota.save(update_fields=["send_count"])
         logger.info(f"OTP created and sent successfully for {email}")
-        return otp_record, "OTP sent successfully"
+        return otp_record, {
+            "message": "OTP sent successfully",
+            "cooldown_seconds": rate_limit_meta.get("cooldown_seconds", getattr(settings, "OTP_SEND_COOLDOWN_SECONDS", 60)),
+            "daily_limit": rate_limit_meta.get("daily_limit", getattr(settings, "OTP_EMAILS_PER_DAY", 5)),
+            "sent_count": quota.send_count,
+            "remaining_today": max(0, rate_limit_meta.get("daily_limit", getattr(settings, "OTP_EMAILS_PER_DAY", 5)) - quota.send_count),
+        }
     else:
         # If email failed to send, delete the OTP record
         logger.error(f"Email sending failed for {email}, deleting OTP record")

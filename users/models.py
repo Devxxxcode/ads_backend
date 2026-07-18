@@ -225,3 +225,21 @@ class EmailOTP(models.Model):
         # Add a small buffer (1 second) to account for time precision issues
         now = timezone.now()
         return now > self.expires_at
+
+
+class EmailOTPSendQuota(models.Model):
+    """
+    Tracks OTP email sends per email address and day.
+    """
+    email = models.EmailField()
+    send_date = models.DateField()
+    send_count = models.PositiveIntegerField(default=0)
+    last_sent_at = models.DateTimeField(null=True, blank=True)
+    cooldown_expires_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ("email", "send_date")
+        ordering = ["-send_date", "email"]
+
+    def __str__(self):
+        return f"{self.email} on {self.send_date}: {self.send_count}"
