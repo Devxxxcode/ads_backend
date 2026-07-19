@@ -1,7 +1,6 @@
 import secrets
 import string
 import math
-from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 from datetime import datetime, timedelta, time as dt_time
@@ -237,15 +236,15 @@ def create_or_update_otp(email):
         logger.error(f"Failed to create OTP record for {email}: {str(e)}")
         return None, "Failed to create OTP record. Please try again."
     
-    # Send OTP via Mailtrap (fast, non-blocking)
-    logger.info(f"Attempting to send OTP email to {email} via Mailtrap")
+    # Send OTP via Resend (fast, non-blocking)
+    logger.info(f"Attempting to send OTP email to {email} via Resend")
     
     try:
         from .email_service_client import send_otp_via_service
         email_sent = send_otp_via_service(email, otp_code)
     except ImportError:
-        # Fallback to direct email if Mailtrap is not available
-        logger.warning("Mailtrap not available, falling back to direct email")
+        # Fallback to direct email if Resend is not available
+        logger.warning("Resend not available, falling back to direct email")
         email_sent = send_otp_email(email, otp_code)
     
     if email_sent:

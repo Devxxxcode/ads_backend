@@ -9,7 +9,7 @@ class UsersConfig(AppConfig):
 
     def ready(self):
         marker = (
-            "ADS_BACKEND_STARTUP_MARKER: users app loaded with Mailtrap email delivery "
+            "ADS_BACKEND_STARTUP_MARKER: users app loaded with Resend email delivery "
             f"(otp_limit={getattr(settings, 'OTP_EMAILS_PER_DAY', 5)}, "
             f"otp_cooldown={getattr(settings, 'OTP_SEND_COOLDOWN_SECONDS', 60)}s)"
         )

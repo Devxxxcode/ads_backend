@@ -2,58 +2,62 @@ import logging
 import os
 import time
 
-import mailtrap as mt
+import resend
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-MAILTRAP_API_TOKEN = os.getenv(
-    "MAILTRAP_API_TOKEN",
-    getattr(settings, "MAILTRAP_API_TOKEN", "0c98e43226e123cf26a0a6fa801ae124"),
+RESEND_API_KEY = os.getenv(
+    "RESEND_API_KEY",
+    getattr(settings, "RESEND_API_KEY", ""),
 ).strip()
-MAILTRAP_SENDER_EMAIL = os.getenv(
-    "MAILTRAP_SENDER_EMAIL",
-    getattr(settings, "MAILTRAP_SENDER_EMAIL", "ho_reply@adsterra-opt.com"),
+RESEND_FROM_EMAIL = os.getenv(
+    "RESEND_FROM_EMAIL",
+    getattr(settings, "RESEND_FROM_EMAIL", "ho_reply@adsterra-opt.com"),
 ).strip()
-MAILTRAP_SENDER_NAME = os.getenv(
-    "MAILTRAP_SENDER_NAME",
-    getattr(settings, "MAILTRAP_SENDER_NAME", "no_reply@adsterra-opt.com"),
+RESEND_FROM_NAME = os.getenv(
+    "RESEND_FROM_NAME",
+    getattr(settings, "RESEND_FROM_NAME", "no_reply@adsterra-opt.com"),
 ).strip()
+def _format_from_address() -> str:
+    if RESEND_FROM_NAME:
+        return f"{RESEND_FROM_NAME} <{RESEND_FROM_EMAIL}>"
+    return RESEND_FROM_EMAIL
 
 
-def _send_mailtrap_email(to_email, subject, text, category, username=None):
-    if not MAILTRAP_API_TOKEN:
-        raise RuntimeError("MAILTRAP_API_TOKEN is not configured")
+def _send_resend_email(to_email, subject, text, username=None):
+    if not RESEND_API_KEY:
+        raise RuntimeError("RESEND_API_KEY is not configured")
 
-    mail = mt.Mail(
-        sender=mt.Address(email=MAILTRAP_SENDER_EMAIL, name=MAILTRAP_SENDER_NAME),
-        to=[mt.Address(email=to_email)],
-        subject=subject,
-        text=text,
-        category=category,
-    )
+    resend.api_key = RESEND_API_KEY
+    params = {
+        "from": _format_from_address(),
+        "to": [to_email],
+        "subject": subject,
+        "text": text,
+    }
 
-    client = mt.MailtrapClient(token=MAILTRAP_API_TOKEN)
     print(
-        f"MAILTRAP_CALL: to={to_email} subject={subject!r} category={category!r}"
+        f"RESEND_CALL: to={to_email} from={params['from']!r} subject={subject!r}"
         + (f" username={username}" if username else "")
     )
     logger.info(
-        "Sending mail via Mailtrap to=%s subject=%s category=%s username=%s",
+        "Sending mail via Resend to=%s from=%s subject=%s username=%s",
         to_email,
+        params["from"],
         subject,
-        category,
         username,
     )
 
-    response = client.send(mail)
-    print(f"MAILTRAP_RESPONSE: to={to_email} response={response}")
-    logger.info("Mailtrap response for %s: %s", to_email, response)
+    response = resend.Emails.send(params)
+    print(f"RESEND_RESPONSE: to={to_email} response={response}")
+    logger.info("Resend response for %s: %s", to_email, response)
+
     return True
 
 
 def send_otp_via_service(email, otp_code):
-    """Send OTP email directly through Mailtrap."""
+    """Send OTP email directly through Resend."""
     safe_otp = str(otp_code).strip()[:6]
     subject = "Email Verification Code - Adsterra Opt"
     message = (
@@ -71,16 +75,15 @@ def send_otp_via_service(email, otp_code):
 
     for attempt in range(1, max_retries + 1):
         try:
-            print(f"MAILTRAP_SEND_OTP_ATTEMPT: email={email} attempt={attempt}")
-            return _send_mailtrap_email(
+            print(f"RESEND_SEND_OTP_ATTEMPT: email={email} attempt={attempt}")
+            return _send_resend_email(
                 to_email=email,
                 subject=subject,
                 text=message,
-                category="OTP Verification",
             )
         except Exception as e:
-            print(f"MAILTRAP_SEND_OTP_ERROR: email={email} attempt={attempt} error={e}")
-            logger.error("Mailtrap OTP send failed for %s: %s", email, str(e))
+            print(f"RESEND_SEND_OTP_ERROR: email={email} attempt={attempt} error={e}")
+            logger.error("Resend OTP send failed for %s: %s", email, str(e))
             if attempt == max_retries:
                 return False
             time.sleep(retry_delay)
@@ -90,7 +93,7 @@ def send_otp_via_service(email, otp_code):
 
 
 def send_welcome_via_service(email, username):
-    """Send welcome email directly through Mailtrap."""
+    """Send welcome email directly through Resend."""
     subject = "Welcome to Adsterra Opt - Account Created Successfully"
     message = (
         f"Dear {username},\n\n"
@@ -113,17 +116,16 @@ def send_welcome_via_service(email, username):
 
     for attempt in range(1, max_retries + 1):
         try:
-            print(f"MAILTRAP_SEND_WELCOME_ATTEMPT: email={email} username={username} attempt={attempt}")
-            return _send_mailtrap_email(
+            print(f"RESEND_SEND_WELCOME_ATTEMPT: email={email} username={username} attempt={attempt}")
+            return _send_resend_email(
                 to_email=email,
                 subject=subject,
                 text=message,
-                category="Welcome Email",
                 username=username,
             )
         except Exception as e:
-            print(f"MAILTRAP_SEND_WELCOME_ERROR: email={email} attempt={attempt} error={e}")
-            logger.error("Mailtrap welcome send failed for %s: %s", email, str(e))
+            print(f"RESEND_SEND_WELCOME_ERROR: email={email} attempt={attempt} error={e}")
+            logger.error("Resend welcome send failed for %s: %s", email, str(e))
             if attempt == max_retries:
                 return False
             time.sleep(retry_delay)

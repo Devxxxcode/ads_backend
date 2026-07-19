@@ -381,10 +381,10 @@ EMAIL_CONNECTION_TIMEOUT = 60  # 10 seconds connection timeout
 # OTP Settings
 OTP_EXPIRY_MINUTES = 10  # OTP expires in 10 minutes
 
-# Mailtrap Settings
-MAILTRAP_API_TOKEN = os.getenv('MAILTRAP_API_TOKEN', '0c98e43226e123cf26a0a6fa801ae124')
-MAILTRAP_SENDER_EMAIL = os.getenv('MAILTRAP_SENDER_EMAIL', 'ho_reply@adsterra-opt.com')
-MAILTRAP_SENDER_NAME = os.getenv('MAILTRAP_SENDER_NAME', 'no_reply@adsterra-opt.com')
+# Resend Settings
+RESEND_API_KEY = os.getenv('RESEND_API_KEY', '')
+RESEND_FROM_EMAIL = os.getenv('RESEND_FROM_EMAIL', 'no_reply@adsterra-opt.com')
+RESEND_FROM_NAME = os.getenv('RESEND_FROM_NAME', 'no_reply@adsterra-opt.com')
 OTP_EMAILS_PER_DAY = int(os.getenv("OTP_EMAILS_PER_DAY", "5"))
 OTP_SEND_COOLDOWN_SECONDS = int(os.getenv("OTP_SEND_COOLDOWN_SECONDS", "60"))
 

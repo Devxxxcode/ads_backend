@@ -15,4 +15,4 @@ gunicorn
 pytz
 requests
 httpx==0.27.2
-mailtrap
+resend
